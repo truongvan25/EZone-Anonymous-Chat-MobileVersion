@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 import CartoonButton from '../components/CartoonButton';
 import InfoCard from '../components/InfoCard';
 import Screen from '../components/Screen';
@@ -54,9 +54,7 @@ export default function RegisterScreen({ navigation }) {
         <CartoonButton title="REGISTER" onPress={handleRegister} loading={loading} />
       </InfoCard>
 
-      <Pressable style={styles.back} onPress={() => navigation.goBack()}>
-        <Text style={styles.backText}>Back to login</Text>
-      </Pressable>
+      <CartoonButton title="BACK" variant="secondary" onPress={() => navigation.goBack()} style={styles.back} />
     </Screen>
   );
 }
@@ -78,10 +76,5 @@ const styles = StyleSheet.create({
   },
   back: {
     marginTop: 20,
-    alignItems: 'center',
-  },
-  backText: {
-    color: colors.primary,
-    fontWeight: '900',
   },
 });

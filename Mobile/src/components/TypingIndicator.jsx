@@ -7,7 +7,7 @@ export default function TypingIndicator({ visible }) {
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.text}>Your mystery buddy is typing...</Text>
+      <Text style={styles.text}>Typing...</Text>
     </View>
   );
 }

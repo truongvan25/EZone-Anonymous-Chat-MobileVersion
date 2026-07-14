@@ -13,9 +13,11 @@ import {
 import CartoonButton from '../components/CartoonButton';
 import MessageBubble from '../components/MessageBubble';
 import TypingIndicator from '../components/TypingIndicator';
+import IdentityRevealedScreen from '../components/IdentityRevealedScreen';
 import { cartoonShadow, colors } from '../constants/theme';
 import { createChatConnection } from '../services/chatService';
 import { clearSession, getSession } from '../services/storage';
+import { requestReveal, getRevealedIdentity } from '../services/revealApi';
 
 function formatTime() {
   return new Date().toLocaleTimeString('vi-VN', {
@@ -31,10 +33,17 @@ export default function ChatRoomScreen({ navigation, route }) {
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [connected, setConnected] = useState(false);
+  const [revealedIdentity, setRevealedIdentity] = useState(null);
+  const [showIdentityModal, setShowIdentityModal] = useState(false);
+  const [revealing, setRevealing] = useState(false);
 
   const connectionRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const listRef = useRef(null);
+  // true khi user chủ động rời màn hình (LEAVE/logout) -> bỏ qua lỗi
+  // 'Invocation canceled' do connection bị stop() giữa lúc JoinRoom đang
+  // chờ phản hồi, không phải lỗi thật.
+  const leavingRef = useRef(false);
 
   useEffect(() => {
     let mounted = true;
@@ -96,6 +105,7 @@ export default function ChatRoomScreen({ navigation, route }) {
         await connection.invoke('JoinRoom', Number(roomId));
         setConnected(true);
       } catch (error) {
+        if (leavingRef.current) return;
         Alert.alert('Chat error', error.message || 'Cannot connect to chat room.');
       }
     };
@@ -133,7 +143,27 @@ export default function ChatRoomScreen({ navigation, route }) {
     }
   };
 
+  const handleRequestReveal = async () => {
+    setRevealing(true);
+    try {
+      const room = await requestReveal(roomId, userId);
+
+      if (room.isRevealed) {
+        const identity = await getRevealedIdentity(roomId, userId);
+        setRevealedIdentity(identity);
+        setShowIdentityModal(true);
+      } else {
+        Alert.alert('Reveal requested', "You showed yours, now it's their turn!");
+      }
+    } catch (error) {
+      Alert.alert('Reveal failed', error.message || 'Too soon to unmask!');
+    } finally {
+      setRevealing(false);
+    }
+  };
+
   const handleLeave = async () => {
+    leavingRef.current = true;
     try {
       await connectionRef.current?.invoke('LeaveRoom');
       await connectionRef.current?.stop();
@@ -142,6 +172,7 @@ export default function ChatRoomScreen({ navigation, route }) {
   };
 
   const handleLogout = async () => {
+    leavingRef.current = true;
     await connectionRef.current?.stop();
     await clearSession();
     navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
@@ -150,7 +181,7 @@ export default function ChatRoomScreen({ navigation, route }) {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View style={styles.header}>
         <View>
@@ -181,6 +212,7 @@ export default function ChatRoomScreen({ navigation, route }) {
       />
 
       <View style={styles.actions}>
+        <CartoonButton title="REVEAL" onPress={handleRequestReveal} loading={revealing} style={styles.actionButton} />
         <CartoonButton title="REPORT" variant="danger" onPress={() => navigation.navigate('ReportUser', { roomId, userId })} style={styles.actionButton} />
         <CartoonButton title="LEAVE" variant="secondary" onPress={handleLeave} style={styles.actionButton} />
       </View>
@@ -198,6 +230,12 @@ export default function ChatRoomScreen({ navigation, route }) {
           <Text style={styles.sendText}>➤</Text>
         </Pressable>
       </View>
+
+      <IdentityRevealedScreen
+        visible={showIdentityModal}
+        onClose={() => setShowIdentityModal(false)}
+        identity={revealedIdentity}
+      />
     </KeyboardAvoidingView>
   );
 }

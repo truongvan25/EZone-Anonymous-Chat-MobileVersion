@@ -8,7 +8,10 @@ import {
   StyleSheet,
   Modal,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
+import CartoonButton from '../components/CartoonButton';
+import { getAdminReports, banReportedUser, deleteReport } from '../services/api';
 
 const COLORS = {
   border: '#111111',
@@ -35,86 +38,49 @@ const SORT_ORDER_OPTIONS = [
 
 const PAGE_SIZE = 5;
 
-const MOCK_REPORTS = [
-  {
-    reportId: 128,
-    roomId: 42,
-    reporterId: 17,
-    reportedUserId: 58,
-    reason: 'offensive',
-    violatingMessage: 'Kept sending offensive messages throughout the chat.',
-    status: 'Pending',
-    createdAt: '2026-07-11T09:15:00',
-  },
-  {
-    reportId: 127,
-    roomId: 39,
-    reporterId: 22,
-    reportedUserId: 61,
-    reason: 'spam',
-    violatingMessage: 'Sent repeated ad links every few messages.',
-    status: 'Resolved',
-    createdAt: '2026-07-10T18:42:00',
-  },
-  {
-    reportId: 126,
-    roomId: 35,
-    reporterId: 9,
-    reportedUserId: 44,
-    reason: 'inappropriate',
-    violatingMessage: 'Sent inappropriate content unrelated to conversation.',
-    status: 'Pending',
-    createdAt: '2026-07-09T21:03:00',
-  },
-];
-
-const AdminReportListScreen = () => {
-  const [sourceReports, setSourceReports] = useState(MOCK_REPORTS);
-  const [reports, setReports] = useState([]); 
+const AdminReportListScreen = ({ navigation }) => {
+  const [reports, setReports] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const [statusFilter, setStatusFilter] = useState('');
-  const [sortOrder, setSortOrder] = useState('desc'); // Luôn cố định sort theo thời gian
+  const [sortOrder, setSortOrder] = useState('desc');
 
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages] = useState(3); 
-  const [totalItems] = useState(13); 
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
 
   const [showFilterSheet, setShowFilterSheet] = useState(false);
 
-  const [banTarget, setBanTarget] = useState(null); 
-  const [deleteTarget, setDeleteTarget] = useState(null); 
+  const [banTarget, setBanTarget] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [processing, setProcessing] = useState(false);
 
-  const loadReports = (page = 1) => {
+  const loadReports = async (page = 1) => {
     setIsLoading(true);
 
-    setTimeout(() => {
-      // 1. Lọc theo Status
-      let filtered = [...sourceReports];
-      if (statusFilter) {
-        filtered = filtered.filter((r) => r.status === statusFilter);
-      }
-
-      // 2. Mặc định luôn Sort theo thời gian `createdAt`
-      filtered.sort((a, b) => {
-        let valueA = new Date(a.createdAt).getTime();
-        let valueB = new Date(b.createdAt).getTime();
-
-        if (valueA < valueB) return sortOrder === 'asc' ? -1 : 1;
-        if (valueA > valueB) return sortOrder === 'asc' ? 1 : -1;
-        return 0;
+    try {
+      const result = await getAdminReports({
+        page,
+        pageSize: PAGE_SIZE,
+        status: statusFilter,
+        sortOrder,
       });
 
-      setReports(filtered);
+      setReports(result.data);
+      setTotalPages(result.totalPages || 1);
+      setTotalItems(result.totalItems || 0);
       setCurrentPage(page);
+    } catch (error) {
+      Alert.alert('Load reports failed', error.message || 'Please try again.');
+    } finally {
       setIsLoading(false);
-    }, 400);
+    }
   };
 
   useEffect(() => {
     loadReports(1);
-  }, [statusFilter, sortOrder, sourceReports]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusFilter, sortOrder]);
 
   const handleApplyFilter = (next) => {
     if (next.status !== undefined) setStatusFilter(next.status);
@@ -122,22 +88,38 @@ const AdminReportListScreen = () => {
     setShowFilterSheet(false);
   };
 
+  const handlePrevPage = () => {
+    if (currentPage > 1) loadReports(currentPage - 1);
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) loadReports(currentPage + 1);
+  };
+
   const handleConfirmBan = async () => {
     setProcessing(true);
-    setTimeout(() => {
-      setProcessing(false);
+    try {
+      await banReportedUser(banTarget.reportId);
       setBanTarget(null);
-      loadReports(currentPage);
-    }, 500);
+      await loadReports(currentPage);
+    } catch (error) {
+      Alert.alert('Ban failed', error.message || 'Please try again.');
+    } finally {
+      setProcessing(false);
+    }
   };
 
   const handleConfirmDelete = async () => {
     setProcessing(true);
-    setTimeout(() => {
-      setSourceReports((prev) => prev.filter((r) => r.reportId !== deleteTarget.reportId));
-      setProcessing(false);
+    try {
+      await deleteReport(deleteTarget.reportId);
       setDeleteTarget(null);
-    }, 500);
+      await loadReports(currentPage);
+    } catch (error) {
+      Alert.alert('Delete failed', error.message || 'Please try again.');
+    } finally {
+      setProcessing(false);
+    }
   };
 
   const formatDate = (iso) =>
@@ -226,9 +208,37 @@ const AdminReportListScreen = () => {
           ListEmptyComponent={
             <Text style={styles.emptyText}>No reports match this filter.</Text>
           }
+          ListFooterComponent={
+            totalItems > 0 ? (
+              <View style={styles.paginationRow}>
+                <Pressable
+                  style={[styles.pageButton, currentPage <= 1 && styles.pageButtonDisabled]}
+                  onPress={handlePrevPage}
+                  disabled={currentPage <= 1}
+                >
+                  <Text style={styles.pageButtonText}>‹ Prev</Text>
+                </Pressable>
+
+                <Text style={styles.pageIndicator}>
+                  Page {currentPage}/{totalPages} · {totalItems} reports
+                </Text>
+
+                <Pressable
+                  style={[styles.pageButton, currentPage >= totalPages && styles.pageButtonDisabled]}
+                  onPress={handleNextPage}
+                  disabled={currentPage >= totalPages}
+                >
+                  <Text style={styles.pageButtonText}>Next ›</Text>
+                </Pressable>
+              </View>
+            ) : null
+          }
         />
       )}
 
+      <View style={styles.backButtonWrap}>
+        <CartoonButton title="BACK" variant="secondary" onPress={() => navigation.goBack()} />
+      </View>
 
       {/* ================= Filter Bottom Sheet ================= */}
       <Modal
@@ -413,6 +423,12 @@ const styles = StyleSheet.create({
   banButtonText: { color: '#FFFFFF', fontWeight: '700', fontSize: 12 },
   deleteButton: { backgroundColor: '#FFFFFF' },
   deleteButtonText: { color: COLORS.danger, fontWeight: '700', fontSize: 12 },
+  paginationRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, marginBottom: 16 },
+  pageButton: { borderWidth: 2, borderColor: COLORS.border, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: '#FFFFFF' },
+  pageButtonDisabled: { opacity: 0.4 },
+  pageButtonText: { fontSize: 12, fontWeight: '700', color: COLORS.textPrimary },
+  pageIndicator: { fontSize: 11, color: COLORS.textMuted, fontWeight: '600' },
+  backButtonWrap: { paddingHorizontal: 20, paddingBottom: 16 },
   emptyText: { textAlign: 'center', color: COLORS.textMuted, marginTop: 40, fontWeight: '500' },
   sheetOverlay: { flex: 1, backgroundColor: COLORS.overlay, justifyContent: 'flex-end' },
   sheet: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, borderWidth: 2.5, borderColor: COLORS.border, borderBottomWidth: 0, padding: 20, paddingBottom: 32 },

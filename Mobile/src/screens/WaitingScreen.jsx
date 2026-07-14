@@ -25,6 +25,10 @@ export default function WaitingScreen({ navigation, route }) {
 
   const connectionRef = useRef(null);
   const bounce = useRef(new Animated.Value(0)).current;
+  // true khi user chủ động rời màn hình này (match thành công hoặc bấm
+  // Cancel) -> bỏ qua lỗi 'Invocation canceled' do connection bị stop
+  // giữa lúc invoke() đang chờ phản hồi, không phải lỗi thật.
+  const leavingRef = useRef(false);
 
   useEffect(() => {
     Animated.loop(
@@ -51,7 +55,6 @@ export default function WaitingScreen({ navigation, route }) {
 
   useEffect(() => {
     let mounted = true;
-    let matched = false;
 
     const startFinding = async () => {
       const session = await getSession();
@@ -72,7 +75,7 @@ export default function WaitingScreen({ navigation, route }) {
       });
 
       connection.on('Matched', roomId => {
-        matched = true;
+        leavingRef.current = true;
         setStatus('Matched! Opening chat...');
         navigation.replace('MatchSuccess', { roomId, userId: finalUserId });
       });
@@ -92,10 +95,11 @@ export default function WaitingScreen({ navigation, route }) {
         setStatus('Finding match...');
         await connection.invoke('FindMatch');
       } catch (error) {
-        // Nếu đã match rồi thì lỗi này chỉ là do connection bị đóng giữa
-        // chừng lúc navigate sang MatchSuccess (xem event 'Matched' ở trên),
-        // không phải lỗi thật -> bỏ qua.
-        if (matched) return;
+        // Nếu đã match hoặc user bấm Cancel rồi thì lỗi này chỉ là do
+        // connection bị stop() giữa chừng lúc invoke() đang chờ phản hồi,
+        // không phải lỗi thật -> bỏ qua (xem leavingRef.current = true ở
+        // event 'Matched' và handleCancel).
+        if (leavingRef.current) return;
 
         setStatus('Connection error');
         Alert.alert('SignalR error', error.message || 'Cannot connect to chat hub.');
@@ -111,6 +115,7 @@ export default function WaitingScreen({ navigation, route }) {
   }, [navigation, route.params?.userId]);
 
   const handleCancel = async () => {
+    leavingRef.current = true;
     await connectionRef.current?.stop();
     navigation.replace('Home');
   };

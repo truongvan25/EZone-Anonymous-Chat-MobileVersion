@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text } from 'react-native';
+import { Alert, StyleSheet, Text } from 'react-native';
 import CartoonButton from '../components/CartoonButton';
 import InfoCard from '../components/InfoCard';
 import Screen from '../components/Screen';
@@ -41,9 +41,7 @@ export default function ActivateAccountScreen({ navigation, route }) {
         <CartoonButton title="ACTIVATE ACCOUNT" onPress={handleActivate} loading={loading} />
       </InfoCard>
 
-      <Pressable style={styles.back} onPress={() => navigation.navigate('Login')}>
-        <Text style={styles.backText}>Back to login</Text>
-      </Pressable>
+      <CartoonButton title="BACK" variant="secondary" onPress={() => navigation.navigate('Login')} style={styles.back} />
     </Screen>
   );
 }
@@ -62,10 +60,5 @@ const styles = StyleSheet.create({
   },
   back: {
     marginTop: 20,
-    alignItems: 'center',
-  },
-  backText: {
-    color: colors.primary,
-    fontWeight: '900',
   },
 });
