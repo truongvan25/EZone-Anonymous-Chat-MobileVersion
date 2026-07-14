@@ -8,7 +8,7 @@ import { clearSession, getSession } from '../services/storage';
 import { logoutRequest } from '../services/api';
 
 export default function HomeScreen({ navigation }) {
-  const [session, setSession] = useState({ fullname: '', userId: '' });
+  const [session, setSession] = useState({ fullname: '', userId: '', roles: [] });
 
   useEffect(() => {
   const loadSession = async () => {
@@ -56,7 +56,11 @@ export default function HomeScreen({ navigation }) {
       </InfoCard>
 
       <CartoonButton title="FIND A MATCH" onPress={goFindMatch} style={styles.button} />
+      <CartoonButton title="MY PROFILE" variant="secondary" onPress={() => navigation.navigate('Profile')} style={styles.button} />
       <CartoonButton title="RULES / ABOUT EZONE" variant="secondary" onPress={() => navigation.navigate('RulesAbout')} style={styles.button} />
+      {session.roles?.includes('Admin') && (
+        <CartoonButton title="ADMIN REPORTS" variant="secondary" onPress={() => navigation.navigate('AdminReportList')} style={styles.button} />
+      )}
       <CartoonButton title="LOG OUT" variant="danger" onPress={handleLogout} style={styles.button} />
     </Screen>
   );

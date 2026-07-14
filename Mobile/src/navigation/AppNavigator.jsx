@@ -12,6 +12,8 @@ import WaitingScreen from '../screens/WaitingScreen';
 import MatchSuccessScreen from '../screens/MatchSuccessScreen';
 import ChatRoomScreen from '../screens/ChatRoomScreen';
 import ReportUserScreen from '../screens/ReportUserScreen';
+import ProfileScreen from '../screens/ProfileScreen';
+import AdminReportListScreen from '../screens/AdminReportListScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -29,6 +31,8 @@ export default function AppNavigator() {
         <Stack.Screen name="MatchSuccess" component={MatchSuccessScreen} />
         <Stack.Screen name="ChatRoom" component={ChatRoomScreen} />
         <Stack.Screen name="ReportUser" component={ReportUserScreen} />
+        <Stack.Screen name="Profile" component={ProfileScreen} />
+        <Stack.Screen name="AdminReportList" component={AdminReportListScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

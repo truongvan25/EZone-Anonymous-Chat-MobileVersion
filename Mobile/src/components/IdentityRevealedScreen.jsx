@@ -9,6 +9,7 @@ import {
   Linking,
   Platform,
 } from 'react-native';
+import { BASE_URL } from '../constants/config';
 
 const COLORS = {
   border: '#111111',
@@ -29,7 +30,7 @@ const IdentityRevealedScreen = ({
   visible,
   onClose,
   identity,
-  apiBaseUrl = 'https://localhost:44352',
+  apiBaseUrl = BASE_URL,
 }) => {
   const avatarSource =
     identity?.avatarUrl && identity.avatarUrl.length > 0

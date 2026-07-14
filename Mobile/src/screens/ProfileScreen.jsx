@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   SafeAreaView,
   View,
@@ -8,11 +8,15 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Modal,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
-
-// import { launchImageLibrary } from 'react-native-image-picker';
+import CartoonButton from '../components/CartoonButton';
+import { launchImageLibrary } from 'react-native-image-picker';
+import LogoutConfirmationDialog from '../components/LogoutConfirmationDialog';
+import { getMyProfile, updateProfile, logoutRequest } from '../services/api';
+import { clearSession } from '../services/storage';
+import { BASE_URL } from '../constants/config';
 
 const COLORS = {
   border: '#111111',
@@ -30,61 +34,37 @@ const SHADOW_OFFSET = 5;
 const CARD_RADIUS = 18;
 const AVATAR_SIZE = 104;
 
-const ProfileScreen = () => {
-  const [profile, setProfile] = useState({
-    fullname: 'Phạm Minh Luân',
-    avatarUrl: null,
-    majorCode: 'CIT',
-    gender: 'Male',
-    email: 'luan.pham@eiu.edu.vn',
-    socialLink: 'https://www.facebook.com/pham.luan.136149',
-  });
+const ProfileScreen = ({ navigation }) => {
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   const [isEditing, setIsEditing] = useState(false);
-  const [draft, setDraft] = useState(profile);
+  const [draft, setDraft] = useState(null);
+  const [saving, setSaving] = useState(false);
+
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
-  const requestAndroidPermission = async () => {
-    if (Platform.OS !== 'android') return true;
- 
-    // Android 13+ (API 33) dùng permission khác Android cũ
-    const permission =
-      Platform.Version >= 33
-        ? PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES
-        : PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE;
- 
-    const granted = await PermissionsAndroid.request(permission);
-    return granted === PermissionsAndroid.RESULTS.GRANTED;
-  };
- 
-  const handleChangePhoto = async () => {
-    const hasPermission = await requestAndroidPermission();
- 
-    if (!hasPermission) {
-      Alert.alert(
-        'Photo access is required.',
-        'Allow the app to access your photo library in Settings to change your avatar.'
-      );
-      return;
-    }
- 
-    launchImageLibrary(
-      {
-        mediaType: 'photo',
-        quality: 0.8,
-        selectionLimit: 1,
-      },
-      (response) => {
-        if (response.didCancel || response.errorCode) return;
- 
-        const pickedUri = response.assets?.[0]?.uri;
-        if (pickedUri) {
-          setProfile((prev) => ({ ...prev, avatarUrl: pickedUri }));
-        }
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      try {
+        const data = await getMyProfile();
+        if (mounted) setProfile(data);
+      } catch (error) {
+        Alert.alert('Load profile failed', error.message || 'Please try again.');
+      } finally {
+        if (mounted) setLoading(false);
       }
-    );
-  };
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleStartEdit = () => {
     setDraft(profile);
@@ -95,21 +75,71 @@ const ProfileScreen = () => {
     setIsEditing(false);
   };
 
-  const handleSaveProfile = () => {
-    // TODO: NỐI API — await updateProfile(userId, draft)
-    setProfile(draft);
-    setIsEditing(false);
+  const handleSaveProfile = async () => {
+    setSaving(true);
+    try {
+      await updateProfile(profile.userId, draft);
+      setProfile(draft);
+      setIsEditing(false);
+    } catch (error) {
+      Alert.alert('Update failed', error.message || 'Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
+
+  const handleChangePhoto = () => {
+  launchImageLibrary({ mediaType: 'photo', quality: 0.8, selectionLimit: 1 }, async response => {
+    if (response.didCancel || response.errorCode) return;
+
+    const asset = response.assets?.[0];
+    if (!asset) return;
+
+    setUploadingAvatar(true);
+    try {
+      await updateProfile(profile.userId, { ...profile, avatarFile: asset });
+      const data = await getMyProfile();
+      setProfile(data);
+    } catch (error) {
+      Alert.alert('Upload failed', error.message || 'Please try again.');
+    } finally {
+      setUploadingAvatar(false);
+    }
+  });
+};
+
 
   const handleConfirmLogout = async () => {
     setLoggingOut(true);
     try {
-      // TODO: NỐI API — giống hệt logic logout() trong ChatRoomScreen
-    } finally {
-      setLoggingOut(false);
-      setShowLogoutDialog(false);
+      await logoutRequest();
+    } catch {
+      // Backend logout lỗi vẫn xóa local session để người dùng thoát app.
     }
+    await clearSession();
+    setLoggingOut(false);
+    setShowLogoutDialog(false);
+    navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
   };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.safeArea, styles.center]}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </SafeAreaView>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <SafeAreaView style={[styles.safeArea, styles.center]}>
+        <Text style={styles.errorText}>Could not load profile.</Text>
+      </SafeAreaView>
+    );
+  }
+
+  const shown = isEditing ? draft : profile;
+  const avatarUri = shown.avatarUrl ? `${BASE_URL}${shown.avatarUrl}` : null;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -120,20 +150,23 @@ const ProfileScreen = () => {
           <Text style={styles.headerSubtitle}>Your EZone identity</Text>
         </View>
 
-        {/* ---- Avatar block ---- */}
+        
         <View style={styles.avatarSection}>
           <View style={styles.avatarWrapper}>
-            {profile.avatarUrl ? (
-              <Image source={{ uri: profile.avatarUrl }} style={styles.avatarImage} />
+            {avatarUri ? (
+              <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
             ) : (
               <View style={styles.avatarFallback}>
                 <Text style={styles.avatarEmoji}>👤</Text>
               </View>
             )}
           </View>
- 
-          <Pressable style={styles.changeAvatarButton} onPress={handleChangePhoto}>
-            <Text style={styles.changeAvatarText}>Change Photo</Text>
+          <Pressable onPress={handleChangePhoto} disabled={uploadingAvatar} style={styles.changeAvatarButton}>
+            {uploadingAvatar ? (
+              <ActivityIndicator size="small" color={COLORS.primary} />
+            ) : (
+              <Text style={styles.changeAvatarText}>Change Photo</Text>
+            )}
           </Pressable>
         </View>
 
@@ -144,37 +177,32 @@ const ProfileScreen = () => {
           <View style={styles.card}>
             <ProfileField
               label="Full Name"
-              value={isEditing ? draft.fullname : profile.fullname}
+              value={shown.fullname}
               editable={isEditing}
-              onChangeText={(text) => setDraft((d) => ({ ...d, fullname: text }))}
+              onChangeText={text => setDraft(d => ({ ...d, fullname: text }))}
             />
 
             <ProfileField
               label="Major"
-              value={isEditing ? draft.majorCode : profile.majorCode}
+              value={shown.majorCode}
               editable={isEditing}
-              onChangeText={(text) => setDraft((d) => ({ ...d, majorCode: text }))}
+              onChangeText={text => setDraft(d => ({ ...d, majorCode: text }))}
             />
 
             <ProfileField
               label="Gender"
-              value={isEditing ? draft.gender : profile.gender}
+              value={shown.gender}
               editable={isEditing}
-              onChangeText={(text) => setDraft((d) => ({ ...d, gender: text }))}
+              onChangeText={text => setDraft(d => ({ ...d, gender: text }))}
             />
 
-            <ProfileField
-              label="Email"
-              value={profile.email}
-              editable={false}
-              helperText="Email không thể thay đổi"
-            />
+            <ProfileField label="Email" value={shown.email} editable={false} helperText="Email không thể thay đổi" />
 
             <ProfileField
               label="Social Link"
-              value={isEditing ? draft.socialLink : profile.socialLink}
+              value={shown.socialLink}
               editable={isEditing}
-              onChangeText={(text) => setDraft((d) => ({ ...d, socialLink: text }))}
+              onChangeText={text => setDraft(d => ({ ...d, socialLink: text }))}
               isLast
             />
           </View>
@@ -183,34 +211,24 @@ const ProfileScreen = () => {
         {/* ---- Buttons ---- */}
         {isEditing ? (
           <View style={styles.editButtonRow}>
-            <Pressable
-              style={[styles.actionButton, styles.cancelButton]}
-              onPress={handleCancelEdit}
-            >
+            <Pressable style={[styles.actionButton, styles.cancelButton]} onPress={handleCancelEdit} disabled={saving}>
               <Text style={styles.cancelButtonText}>Cancel</Text>
             </Pressable>
-            <Pressable
-              style={[styles.actionButton, styles.saveButton]}
-              onPress={handleSaveProfile}
-            >
-              <Text style={styles.saveButtonText}>Save changes</Text>
+            <Pressable style={[styles.actionButton, styles.saveButton]} onPress={handleSaveProfile} disabled={saving}>
+              {saving ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Text style={styles.saveButtonText}>Save changes</Text>}
             </Pressable>
           </View>
         ) : (
-          <Pressable
-            style={[styles.actionButton, styles.editButton]}
-            onPress={handleStartEdit}
-          >
+          <Pressable style={[styles.actionButton, styles.editButton]} onPress={handleStartEdit}>
             <Text style={styles.editButtonText}>Edit Profile</Text>
           </Pressable>
         )}
 
-        <Pressable
-          style={[styles.actionButton, styles.logoutButton]}
-          onPress={() => setShowLogoutDialog(true)}
-        >
+        <Pressable style={[styles.actionButton, styles.logoutButton]} onPress={() => setShowLogoutDialog(true)}>
           <Text style={styles.logoutButtonText}>Log Out</Text>
         </Pressable>
+
+        <CartoonButton title="BACK" variant="secondary" onPress={() => navigation.goBack()} />
       </ScrollView>
 
       <LogoutConfirmationDialog
@@ -222,55 +240,6 @@ const ProfileScreen = () => {
     </SafeAreaView>
   );
 };
-
-/**
- * LogoutConfirmationDialog — dialog xác nhận đăng xuất
- */
-const LogoutConfirmationDialog = ({ visible, onCancel, onConfirm, loading = false }) => (
-  <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel} statusBarTranslucent>
-    <View style={styles.dialogOverlay}>
-      <Pressable style={StyleSheet.absoluteFill} onPress={loading ? undefined : onCancel} />
-      <View style={styles.dialogCardWrapper}>
-        <View style={styles.dialogShadowLayer} />
-        <View style={styles.dialogCard}>
-          <Text style={styles.dialogTitle}>Log Out?</Text>
-          <Text style={styles.dialogDescription}>
-            You'll be signed out of EZone. You can always come back anytime.
-          </Text>
-          <View style={styles.dialogButtonRow}>
-            <Pressable
-              onPress={onCancel}
-              disabled={loading}
-              style={({ pressed }) => [
-                styles.dialogButton,
-                styles.dialogCancelButton,
-                { opacity: pressed ? 0.75 : 1 },
-              ]}
-            >
-              <Text style={styles.dialogCancelText}>Ở Lại</Text>
-            </Pressable>
-            <Pressable
-              onPress={onConfirm}
-              disabled={loading}
-              style={({ pressed }) => [
-                styles.dialogButton,
-                styles.dialogConfirmButton,
-                { opacity: loading ? 0.7 : pressed ? 0.85 : 1 },
-              ]}
-            >
-              {loading ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <Text style={styles.dialogConfirmText}>Log Out</Text>
-              )}
-            </Pressable>
-          </View>
-        </View>
-      </View>
-    </View>
-  </Modal>
-);
-
 
 const ProfileField = ({ label, value, editable, onChangeText, helperText, isLast }) => (
   <View style={[styles.field, isLast && styles.fieldLast]}>
@@ -293,6 +262,14 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  center: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorText: {
+    color: COLORS.textMuted,
+    fontWeight: '600',
   },
   scrollContent: {
     padding: 20,
@@ -342,14 +319,6 @@ const styles = StyleSheet.create({
   },
   avatarEmoji: {
     fontSize: 44,
-  },
-  changeAvatarButton: {
-    marginTop: 10,
-  },
-  changeAvatarText: {
-    color: COLORS.primary,
-    fontWeight: '700',
-    fontSize: 13,
   },
   cardWrapper: {
     marginBottom: 20,
@@ -457,79 +426,11 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     fontSize: 14,
   },
-
-  // ---- Style riêng cho LogoutConfirmationDialog 
-  dialogOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
+  changeAvatarButton: {
+  marginTop: 10,
   },
-  dialogCardWrapper: {
-    width: '100%',
-    maxWidth: 380,
-  },
-  dialogShadowLayer: {
-    position: 'absolute',
-    top: 6,
-    left: 6,
-    right: -6,
-    bottom: -6,
-    backgroundColor: COLORS.shadow,
-    borderRadius: 20,
-  },
-  dialogCard: {
-    backgroundColor: COLORS.cardBg,
-    borderRadius: 20,
-    borderWidth: 2.5,
-    borderColor: COLORS.border,
-    paddingTop: 26,
-    paddingBottom: 22,
-    paddingHorizontal: 24,
-  },
-  dialogTitle: {
-    fontSize: 19,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
-    includeFontPadding: false,
-  },
-  dialogDescription: {
-    fontSize: 14,
-    color: COLORS.textMuted,
-    marginTop: 8,
-    lineHeight: 20,
-    fontWeight: '500',
-  },
-  dialogButtonRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 10,
-    marginTop: 22,
-  },
-  dialogButton: {
-    borderWidth: 2,
-    borderColor: COLORS.border,
-    borderRadius: 12,
-    paddingHorizontal: 18,
-    paddingVertical: 11,
-    minWidth: 84,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dialogCancelButton: {
-    backgroundColor: '#F3F4F6',
-  },
-  dialogCancelText: {
-    color: COLORS.textPrimary,
-    fontWeight: '700',
-    fontSize: 13,
-  },
-  dialogConfirmButton: {
-    backgroundColor: COLORS.primary,
-  },
-  dialogConfirmText: {
-    color: '#FFFFFF',
+  changeAvatarText: {
+    color: COLORS.primary,
     fontWeight: '700',
     fontSize: 13,
   },
