@@ -1,6 +1,6 @@
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
-import { cartoonShadow, colors } from '../constants/theme';
+import { cartoonShadow, colors, fonts } from '../constants/theme';
 
 export default function CartoonButton({
   title,
@@ -46,7 +46,7 @@ const styles = StyleSheet.create({
   text: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '900',
+    fontFamily: fonts.black, fontWeight: '900',
     letterSpacing: 0.5,
   },
   secondary: {

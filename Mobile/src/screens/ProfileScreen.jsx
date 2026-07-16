@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import { fonts } from '../constants/theme';
 import CartoonButton from '../components/CartoonButton';
 import { launchImageLibrary } from 'react-native-image-picker';
 import LogoutConfirmationDialog from '../components/LogoutConfirmationDialog';
@@ -269,7 +270,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: COLORS.textMuted,
-    fontWeight: '600',
+    fontFamily: fonts.medium, fontWeight: '600',
   },
   scrollContent: {
     padding: 20,
@@ -284,7 +285,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     marginTop: 50,
     fontSize: 24,
-    fontWeight: '800',
+    fontFamily: fonts.bold, fontWeight: '800',
     color: COLORS.textPrimary,
     includeFontPadding: false,
   },
@@ -292,7 +293,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: COLORS.textMuted,
     marginTop: 2,
-    fontWeight: '500',
+    fontFamily: fonts.medium, fontWeight: '500',
   },
   avatarSection: {
     alignItems: 'center',
@@ -350,7 +351,7 @@ const styles = StyleSheet.create({
   },
   fieldLabel: {
     fontSize: 12,
-    fontWeight: '700',
+    fontFamily: fonts.bold, fontWeight: '700',
     color: COLORS.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -359,13 +360,13 @@ const styles = StyleSheet.create({
   fieldValue: {
     fontSize: 15,
     color: COLORS.textPrimary,
-    fontWeight: '600',
+    fontFamily: fonts.medium, fontWeight: '600',
     includeFontPadding: false,
   },
   fieldInput: {
     fontSize: 15,
     color: COLORS.textPrimary,
-    fontWeight: '600',
+    fontFamily: fonts.medium, fontWeight: '600',
     borderWidth: 1.5,
     borderColor: COLORS.border,
     borderRadius: 8,
@@ -393,7 +394,7 @@ const styles = StyleSheet.create({
   },
   editButtonText: {
     color: '#FFFFFF',
-    fontWeight: '800',
+    fontFamily: fonts.bold, fontWeight: '800',
     fontSize: 14,
   },
   editButtonRow: {
@@ -406,7 +407,7 @@ const styles = StyleSheet.create({
   },
   cancelButtonText: {
     color: COLORS.textPrimary,
-    fontWeight: '700',
+    fontFamily: fonts.bold, fontWeight: '700',
     fontSize: 14,
   },
   saveButton: {
@@ -415,7 +416,7 @@ const styles = StyleSheet.create({
   },
   saveButtonText: {
     color: '#FFFFFF',
-    fontWeight: '800',
+    fontFamily: fonts.bold, fontWeight: '800',
     fontSize: 14,
   },
   logoutButton: {
@@ -423,7 +424,7 @@ const styles = StyleSheet.create({
   },
   logoutButtonText: {
     color: COLORS.danger,
-    fontWeight: '800',
+    fontFamily: fonts.bold, fontWeight: '800',
     fontSize: 14,
   },
   changeAvatarButton: {
@@ -431,7 +432,7 @@ const styles = StyleSheet.create({
   },
   changeAvatarText: {
     color: COLORS.primary,
-    fontWeight: '700',
+    fontFamily: fonts.bold, fontWeight: '700',
     fontSize: 13,
   },
 });

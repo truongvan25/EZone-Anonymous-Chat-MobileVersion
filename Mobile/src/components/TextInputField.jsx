@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
-import { cartoonShadow, colors } from '../constants/theme';
+import { cartoonShadow, colors, fonts } from '../constants/theme';
 
 export default function TextInputField({ label, error, style, ...props }) {
   return (
@@ -23,7 +23,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: '800',
+    fontFamily: fonts.bold, fontWeight: '800',
     color: colors.text,
     marginBottom: 8,
   },
@@ -42,6 +42,6 @@ const styles = StyleSheet.create({
   error: {
     marginTop: 6,
     color: colors.danger,
-    fontWeight: '700',
+    fontFamily: fonts.bold, fontWeight: '700',
   },
 });

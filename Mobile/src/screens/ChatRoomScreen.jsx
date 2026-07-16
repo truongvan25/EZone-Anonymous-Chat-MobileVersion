@@ -14,10 +14,10 @@ import CartoonButton from '../components/CartoonButton';
 import MessageBubble from '../components/MessageBubble';
 import TypingIndicator from '../components/TypingIndicator';
 import IdentityRevealedScreen from '../components/IdentityRevealedScreen';
-import { cartoonShadow, colors } from '../constants/theme';
+import { cartoonShadow, colors, fonts } from '../constants/theme';
 import { createChatConnection } from '../services/chatService';
 import { clearSession, getSession } from '../services/storage';
-import { requestReveal, getRevealedIdentity } from '../services/revealApi';
+import { requestReveal, getRevealedIdentity, getRevealStatus } from '../services/revealApi';
 
 function formatTime() {
   return new Date().toLocaleTimeString('vi-VN', {
@@ -146,7 +146,11 @@ export default function ChatRoomScreen({ navigation, route }) {
   const handleRequestReveal = async () => {
     setRevealing(true);
     try {
+      const status = await getRevealStatus(roomId);
+      console.log('[MOBILE][Reveal] status before request:', status);
+
       const room = await requestReveal(roomId, userId);
+      console.log('[MOBILE][Reveal] requestReveal response:', room);
 
       if (room.isRevealed) {
         const identity = await getRevealedIdentity(roomId, userId);
@@ -156,6 +160,7 @@ export default function ChatRoomScreen({ navigation, route }) {
         Alert.alert('Reveal requested', "You showed yours, now it's their turn!");
       }
     } catch (error) {
+      console.log('[MOBILE][Reveal] error:', error);
       Alert.alert('Reveal failed', error.message || 'Too soon to unmask!');
     } finally {
       setRevealing(false);
@@ -258,11 +263,11 @@ const styles = StyleSheet.create({
   title: {
     color: '#fff',
     fontSize: 24,
-    fontWeight: '900',
+    fontFamily: fonts.black, fontWeight: '900',
   },
   subtitle: {
     color: '#ffe3eb',
-    fontWeight: '800',
+    fontFamily: fonts.bold, fontWeight: '800',
     marginTop: 3,
   },
   logoutButton: {
@@ -275,7 +280,7 @@ const styles = StyleSheet.create({
   },
   logoutText: {
     color: colors.primary,
-    fontWeight: '900',
+    fontFamily: fonts.black, fontWeight: '900',
   },
   list: {
     flex: 1,
@@ -293,7 +298,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     color: colors.muted,
-    fontWeight: '800',
+    fontFamily: fonts.bold, fontWeight: '800',
     marginTop: 10,
   },
   actions: {
@@ -321,7 +326,7 @@ const styles = StyleSheet.create({
     minHeight: 42,
     color: colors.text,
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: fonts.medium, fontWeight: '600',
     paddingHorizontal: 8,
   },
   sendButton: {
@@ -340,6 +345,6 @@ const styles = StyleSheet.create({
   sendText: {
     color: '#fff',
     fontSize: 24,
-    fontWeight: '900',
+    fontFamily: fonts.black, fontWeight: '900',
   },
 });

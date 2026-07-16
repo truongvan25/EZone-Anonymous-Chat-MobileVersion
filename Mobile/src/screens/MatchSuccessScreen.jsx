@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
-import { cartoonShadow, colors } from '../constants/theme';
+import { cartoonShadow, colors, fonts } from '../constants/theme';
 
 export default function MatchSuccessScreen({ navigation, route }) {
   const scale = useRef(new Animated.Value(0.6)).current;
@@ -54,18 +54,18 @@ const styles = StyleSheet.create({
   title: {
     color: colors.primary,
     fontSize: 38,
-    fontWeight: '900',
+    fontFamily: fonts.black, fontWeight: '900',
     marginTop: 10,
   },
   subtitle: {
     color: colors.text,
     fontSize: 17,
-    fontWeight: '800',
+    fontFamily: fonts.bold, fontWeight: '800',
     marginTop: 8,
   },
   room: {
     color: colors.muted,
     marginTop: 14,
-    fontWeight: '800',
+    fontFamily: fonts.bold, fontWeight: '800',
   },
 });

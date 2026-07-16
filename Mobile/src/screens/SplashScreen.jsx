@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { colors } from '../constants/theme';
+import { colors, fonts } from '../constants/theme';
 import { clearSession, hasValidSession } from '../services/storage';
 
 export default function SplashScreen({ navigation }) {
@@ -54,14 +54,14 @@ const styles = StyleSheet.create({
   logo: {
     color: colors.primary,
     fontSize: 46,
-    fontWeight: '900',
+    fontFamily: fonts.black, fontWeight: '900',
     letterSpacing: 1,
   },
   subtitle: {
     color: colors.text,
     marginTop: 6,
     fontSize: 16,
-    fontWeight: '800',
+    fontFamily: fonts.bold, fontWeight: '800',
   },
   loader: {
     marginTop: 30,

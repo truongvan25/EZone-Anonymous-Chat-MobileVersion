@@ -3,7 +3,7 @@ import { StyleSheet, Text } from 'react-native';
 import CartoonButton from '../components/CartoonButton';
 import InfoCard from '../components/InfoCard';
 import Screen from '../components/Screen';
-import { colors } from '../constants/theme';
+import { colors, fonts } from '../constants/theme';
 
 const rules = [
   'Be respectful and friendly.',
@@ -42,17 +42,17 @@ const styles = StyleSheet.create({
     marginTop: 40,
     color: colors.primary,
     fontSize: 34,
-    fontWeight: '900',
+    fontFamily: fonts.black, fontWeight: '900',
   },
   subtitle: {
     color: colors.text,
-    fontWeight: '800',
+    fontFamily: fonts.bold, fontWeight: '800',
     marginBottom: 22,
   },
   rule: {
     color: colors.text,
     fontSize: 16,
-    fontWeight: '800',
+    fontFamily: fonts.bold, fontWeight: '800',
     lineHeight: 26,
     marginBottom: 8,
   },
@@ -62,7 +62,7 @@ const styles = StyleSheet.create({
   aboutText: {
     color: colors.text,
     fontSize: 15,
-    fontWeight: '700',
+    fontFamily: fonts.bold, fontWeight: '700',
     lineHeight: 23,
   },
   button: {

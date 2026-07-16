@@ -3,7 +3,7 @@ import { Alert, StyleSheet, Text, View } from 'react-native';
 import CartoonButton from '../components/CartoonButton';
 import InfoCard from '../components/InfoCard';
 import Screen from '../components/Screen';
-import { cartoonShadow, colors } from '../constants/theme';
+import { cartoonShadow, colors, fonts } from '../constants/theme';
 import { clearSession, getSession } from '../services/storage';
 import { logoutRequest } from '../services/api';
 
@@ -81,11 +81,11 @@ const styles = StyleSheet.create({
   title: {
     color: '#fff',
     fontSize: 42,
-    fontWeight: '900',
+    fontFamily: fonts.black, fontWeight: '900',
   },
   subtitle: {
     color: '#fff',
-    fontWeight: '800',
+    fontFamily: fonts.bold, fontWeight: '800',
     textAlign: 'center',
   },
   profile: {
@@ -95,7 +95,7 @@ const styles = StyleSheet.create({
   profileText: {
     color: colors.text,
     fontSize: 16,
-    fontWeight: '800',
+    fontFamily: fonts.bold, fontWeight: '800',
     marginTop: 4,
   },
   button: {

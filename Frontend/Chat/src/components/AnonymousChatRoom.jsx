@@ -27,7 +27,7 @@ import ActionButton from '@/components/ActionButton.jsx';
 import TypingIndicator from '@/components/TypingIndicator.jsx';
 import { getMessages } from '@/services/messageService';
 import { createReport } from '@/services/reportService';
-import { requestReveal, getRevealedIdentity } from '@/services/revealService';
+import { requestReveal, getRevealedIdentity, getRevealStatus } from '@/services/revealService';
 import { BASE_URL, API_BASE_URL } from '@/constants/config';
 
 const AnonymousChatRoom = () => {
@@ -187,10 +187,14 @@ const AnonymousChatRoom = () => {
                         .get("userId")
                 );
 
+            const status = await getRevealStatus(currentRoomId);
+            console.log('[WEB][Reveal] status before request:', status);
+
             const room = await requestReveal(
                 currentRoomId,
                 userId
             );
+            console.log('[WEB][Reveal] requestReveal response:', room);
 
             if (room.isRevealed) {
                 const identity =
@@ -209,7 +213,7 @@ const AnonymousChatRoom = () => {
             }
         }
         catch (err) {
-            console.error(err);
+            console.error('[WEB][Reveal] error:', err);
             toast.error(err || "Too soon to unmask!");
         }
     };

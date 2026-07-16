@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { colors } from '../constants/theme';
+import { colors, fonts } from '../constants/theme';
 
 export default function TypingIndicator({ visible }) {
   if (!visible) return null;
@@ -25,7 +25,7 @@ const styles = StyleSheet.create({
   },
   text: {
     color: colors.text,
-    fontWeight: '800',
+    fontFamily: fonts.bold, fontWeight: '800',
     fontStyle: 'italic',
   },
 });

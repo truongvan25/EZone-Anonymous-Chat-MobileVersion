@@ -4,7 +4,7 @@ import CartoonButton from '../components/CartoonButton';
 import InfoCard from '../components/InfoCard';
 import Screen from '../components/Screen';
 import TextInputField from '../components/TextInputField';
-import { colors } from '../constants/theme';
+import { colors, fonts } from '../constants/theme';
 import { login } from '../services/api';
 import { saveSession } from '../services/storage';
 
@@ -80,13 +80,13 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 38,
-    fontWeight: '900',
+    fontFamily: fonts.black, fontWeight: '900',
     color: colors.primary,
     letterSpacing: 2,
   },
   subtitle: {
     color: colors.text,
-    fontWeight: '800',
+    fontFamily: fonts.bold, fontWeight: '800',
     marginBottom: 22,
   },
   card: {
@@ -100,10 +100,10 @@ const styles = StyleSheet.create({
   },
   link: {
     color: colors.primary,
-    fontWeight: '900',
+    fontFamily: fonts.black, fontWeight: '900',
   },
   dot: {
     color: colors.muted,
-    fontWeight: '900',
+    fontFamily: fonts.black, fontWeight: '900',
   },
 });
