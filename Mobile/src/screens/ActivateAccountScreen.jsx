@@ -4,7 +4,7 @@ import CartoonButton from '../components/CartoonButton';
 import InfoCard from '../components/InfoCard';
 import Screen from '../components/Screen';
 import TextInputField from '../components/TextInputField';
-import { colors } from '../constants/theme';
+import { colors, fonts } from '../constants/theme';
 import { activateAccount } from '../services/api';
 
 export default function ActivateAccountScreen({ navigation, route }) {
@@ -51,11 +51,11 @@ const styles = StyleSheet.create({
     marginTop: 40,
     color: colors.primary,
     fontSize: 34,
-    fontWeight: '900',
+    fontFamily: fonts.black, fontWeight: '900',
   },
   subtitle: {
     color: colors.text,
-    fontWeight: '800',
+    fontFamily: fonts.bold, fontWeight: '800',
     marginBottom: 22,
   },
   back: {

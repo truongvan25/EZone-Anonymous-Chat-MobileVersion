@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { colors } from '../constants/theme';
+import { colors, fonts } from '../constants/theme';
 
 export default function MessageBubble({ message, isOwn, timestamp }) {
   return (
@@ -40,7 +40,7 @@ const styles = StyleSheet.create({
   },
   text: {
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: fonts.medium, fontWeight: '600',
   },
   ownText: {
     color: '#fff',
@@ -51,7 +51,7 @@ const styles = StyleSheet.create({
   time: {
     fontSize: 11,
     marginTop: 4,
-    fontWeight: '700',
+    fontFamily: fonts.bold, fontWeight: '700',
   },
   ownTime: {
     color: '#ffe3eb',

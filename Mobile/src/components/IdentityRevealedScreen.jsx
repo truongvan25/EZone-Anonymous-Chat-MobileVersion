@@ -9,6 +9,7 @@ import {
   Linking,
   Platform,
 } from 'react-native';
+import { fonts } from '../constants/theme';
 import { BASE_URL } from '../constants/config';
 
 const COLORS = {
@@ -158,7 +159,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 20,
-    fontWeight: '800',
+    fontFamily: fonts.bold, fontWeight: '800',
     color: COLORS.textPrimary,
     includeFontPadding: false,
   },
@@ -166,7 +167,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.textMuted,
     marginTop: 4,
-    fontWeight: '500',
+    fontFamily: fonts.medium, fontWeight: '500',
   },
   identityBlock: {
     alignItems: 'center',
@@ -196,7 +197,7 @@ const styles = StyleSheet.create({
   },
   closeIcon: {
     fontSize: 15,
-    fontWeight: '700',
+    fontFamily: fonts.bold, fontWeight: '700',
     color: COLORS.border,
     includeFontPadding: false,
   },
@@ -206,26 +207,26 @@ const styles = StyleSheet.create({
   },
   name: {
     fontSize: 18,
-    fontWeight: '700',
+    fontFamily: fonts.bold, fontWeight: '700',
     color: COLORS.textPrimary,
     includeFontPadding: false,
   },
   metaText: {
     fontSize: 13,
     color: COLORS.textMuted,
-    fontWeight: '500',
+    fontFamily: fonts.medium, fontWeight: '500',
     marginTop: 4,
   },
   socialLink: {
     fontSize: 13,
-    fontWeight: '700',
+    fontFamily: fonts.bold, fontWeight: '700',
     color: COLORS.link,
     marginTop: 10,
     maxWidth: 260,
   },
   pendingText: {
     textAlign: 'center',
-    fontWeight: '500',
+    fontFamily: fonts.medium, fontWeight: '500',
     color: COLORS.textPrimary,
     marginTop: 32,
     marginBottom: 8,

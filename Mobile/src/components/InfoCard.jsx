@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { cartoonShadow, colors } from '../constants/theme';
+import { cartoonShadow, colors, fonts } from '../constants/theme';
 
 export default function InfoCard({ title, children, style }) {
   return (
@@ -21,13 +21,13 @@ const styles = StyleSheet.create({
   title: {
     color: colors.primary,
     fontSize: 20,
-    fontWeight: '900',
+    fontFamily: fonts.black, fontWeight: '900',
     marginBottom: 8,
   },
   body: {
     fontSize: 15,
     color: colors.text,
     lineHeight: 22,
-    fontWeight: '600',
+    fontFamily: fonts.medium, fontWeight: '600',
   },
 });

@@ -3,7 +3,7 @@ import { Alert, Animated, StyleSheet, Text, View } from 'react-native';
 import CartoonButton from '../components/CartoonButton';
 import InfoCard from '../components/InfoCard';
 import Screen from '../components/Screen';
-import { cartoonShadow, colors } from '../constants/theme';
+import { cartoonShadow, colors, fonts } from '../constants/theme';
 import { createChatConnection } from '../services/chatService';
 import { getSession } from '../services/storage';
 
@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 32,
-    fontWeight: '900',
+    fontFamily: fonts.black, fontWeight: '900',
     color: colors.text,
     textAlign: 'center',
   },
@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     color: colors.primary,
     fontSize: 17,
-    fontWeight: '900',
+    fontFamily: fonts.black, fontWeight: '900',
     textAlign: 'center',
   },
   avatar: {
@@ -185,7 +185,7 @@ const styles = StyleSheet.create({
   },
   status: {
     color: colors.muted,
-    fontWeight: '900',
+    fontFamily: fonts.black, fontWeight: '900',
     marginBottom: 18,
   },
   stats: {
@@ -207,12 +207,12 @@ const styles = StyleSheet.create({
   statLabel: {
     color: colors.muted,
     fontSize: 12,
-    fontWeight: '900',
+    fontFamily: fonts.black, fontWeight: '900',
   },
   statValue: {
     color: colors.text,
     fontSize: 24,
-    fontWeight: '900',
+    fontFamily: fonts.black, fontWeight: '900',
     marginTop: 4,
   },
   primaryText: {
@@ -225,6 +225,6 @@ const styles = StyleSheet.create({
   userHint: {
     marginTop: 12,
     color: colors.muted,
-    fontWeight: '700',
+    fontFamily: fonts.bold, fontWeight: '700',
   },
 });

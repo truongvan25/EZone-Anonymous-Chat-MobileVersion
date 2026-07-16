@@ -29,3 +29,10 @@ export const cartoonShadow = {
   shadowOffset: { width: 3, height: 3 },
   elevation: 5,
 };
+
+export const fonts = {
+  regular: 'monospace',
+  medium: 'monospace',
+  bold: 'monospace',
+  black: 'monospace',
+};

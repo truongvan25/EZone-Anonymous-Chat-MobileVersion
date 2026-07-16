@@ -7,6 +7,7 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
+import { fonts } from '../constants/theme';
 
 const COLORS = {
   border: '#111111',
@@ -121,7 +122,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 19,
-    fontWeight: '800',
+    fontFamily: fonts.bold, fontWeight: '800',
     color: COLORS.textPrimary,
     includeFontPadding: false,
   },
@@ -130,7 +131,7 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     marginTop: 8,
     lineHeight: 20,
-    fontWeight: '500',
+    fontFamily: fonts.medium, fontWeight: '500',
   },
   buttonRow: {
     flexDirection: 'row',
@@ -153,7 +154,7 @@ const styles = StyleSheet.create({
   },
   cancelButtonText: {
     color: COLORS.cancelText,
-    fontWeight: '700',
+    fontFamily: fonts.bold, fontWeight: '700',
     fontSize: 13,
   },
   confirmButton: {
@@ -161,7 +162,7 @@ const styles = StyleSheet.create({
   },
   confirmButtonText: {
     color: COLORS.confirmText,
-    fontWeight: '700',
+    fontFamily: fonts.bold, fontWeight: '700',
     fontSize: 13,
   },
 });
