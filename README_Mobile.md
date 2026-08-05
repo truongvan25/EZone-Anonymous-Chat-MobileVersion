@@ -1,175 +1,233 @@
-# EZone Mobile — Kế hoạch triển khai
+# EZone Mobile — Tài liệu kỹ thuật (as-built)
 
-Chuyển EZone (web) sang bản mobile cho môn Mobile. **Backend ASP.NET Core giữ nguyên**, chỉ bổ sung thêm vài API còn thiếu. **Frontend viết mới hoàn toàn bằng React Native**, không tái sử dụng UI web (Tailwind/Radix không chạy trên RN).
+> File này trước đây là bản **kế hoạch triển khai** (task list trước khi code).
+> Toàn bộ đã triển khai xong — nội dung dưới đây mô tả **đúng những gì đã làm
+> thật trong code**, dùng để viết report/slide phần Mobile Frontend.
 
-Tham khảo yêu cầu môn học: `CHAT-PROJECT/Project Requirements_v2.pdf` (tối thiểu 20 màn hình, tối thiểu 9 loại API, JSON response).
-
-Danh sách task chia làm 3 phần (Backend, Mobile Frontend, Test/Docs/Integration) — tự nhận task theo phần phù hợp, không gán cứng ai làm gì.
-
-Thứ tự làm: **Phần A (backend) nên xong task 1-3 trước** để Phần B có API thật để nối vào các screen Phase 1. Các task backend còn lại có thể làm song song với lúc dựng UI/navigation bên mobile (dùng mock data tạm trong lúc chờ).
-
----
-
-## Phần A — Backend & Database
-
-Code hiện có (không cần đụng vào, chỉ tham khảo): `Backend/WebChatEIU/Controllers/*`, `Hubs/ChatHub.cs`, `Services/*`.
-
-### A1. Sửa API profile cho user tự dùng (ưu tiên cao — cần làm trước để mobile có API dùng ngay)
-- [ ] Thêm `GET /api/Users/me` — lấy `userId` từ JWT claim (`User.FindFirst("userId")`), trả về profile của chính user đang login (không cần `[Authorize(Roles="Admin")]` như `GetUser` hiện tại).
-- [ ] Review lại `PUT /api/Users/{id}` (`UpdateUsers`) — hiện đang không check quyền, user A có thể sửa profile user B nếu biết `id`. Thêm check `id` phải trùng với `userId` trong JWT.
-
-### A2. API lịch sử match (list + detail — bắt buộc cho yêu cầu môn học)
-- [ ] `GET /api/ChatRooms/history/{userId}` — trả danh sách các phòng đã `Closed` mà user từng tham gia (sắp xếp theo `UpdatedAt` giảm dần). Đây là **"Get list data API"**.
-- [ ] `GET /api/ChatRooms/{roomId}` — trả chi tiết 1 phòng (nickname, thời gian, affinity score, trạng thái reveal). Đây là **"Get detail data API"**. Nhớ check user gọi API phải thuộc phòng đó (giống cách `RevealController` đang làm).
-
-### A3. API report cho user thường (hiện tại report chỉ Admin xem được)
-- [ ] `GET /api/ChatReports/my/{userId}` — trả các report mà chính user đó đã gửi đi (khác với `GET /api/ChatReports` hiện tại là dành riêng cho Admin).
-
-### A4. Sửa 2 bug đã phát hiện khi test web (nên fix trước khi build mobile để khỏi lặp lại)
-- [ ] `ChatHub.LeaveRoom()` hiện **không xóa message / không đóng phòng trong DB**, chỉ dọn kết nối SignalR. Cần gọi logic giống `ChatRoomsController.LeaveChat` (xóa `Messages` theo `RoomId`, set `Status = Closed`) ngay trong hub method này, để hành vi nhất quán dù gọi từ web hay mobile.
-- [ ] `ChatHub.OnConnectedAsync()` dùng `int.Parse(userIdString)` — sẽ crash nếu client gửi `userId` không phải số (đã từng xảy ra ở bản web). Đổi sang `int.TryParse`, nếu parse fail thì abort connection với thông báo lỗi rõ ràng thay vì throw exception.
-
-### A5. (Tuỳ chọn, cân nhắc nếu còn thời gian) API preferences — phục vụ screen "Search/Filter"
-- [ ] Thêm bảng `Preferences` (`UserId`, `PreferredGender`, `PreferredMajor`).
-- [ ] `GET /api/Preferences/{userId}`, `PUT /api/Preferences/{userId}`.
-- [ ] `MatchmakingService.FindMatch` đọc preferences khi ghép cặp (lọc waiting queue theo tiêu chí, không bắt buộc phải áp dụng thật 100%, có thể để mức đơn giản: ưu tiên ghép ai match tiêu chí trước, không thì ghép ngẫu nhiên như cũ).
-
-### A6. (Tuỳ chọn) API thống kê cho Admin Dashboard
-- [ ] `GET /api/Admin/stats` — đếm nhanh: tổng số user, số report đang Pending, số phòng đang Active. Chỉ cần `COUNT` đơn giản qua `_context`.
-
-### A7. Hạ tầng để mobile kết nối được (khác localhost)
-- [x] Cấu hình backend lắng nghe trên `0.0.0.0` (không chỉ `localhost`) để điện thoại thật/emulator trong cùng mạng LAN gọi được API — đã sửa `applicationUrl` trong `launchSettings.json`.
-- [x] Ghi lại địa chỉ IP LAN của máy chạy backend để cấu hình base URL bên app mobile:
-  - **Base URL hiện tại (Wi-Fi, máy chạy backend):** `http://192.168.202.61:5044` (HTTP) / `https://192.168.202.61:7281` (HTTPS)
-  - Lưu ý: IP này đổi mỗi khi máy chạy backend kết nối lại Wi-Fi / đổi mạng — kiểm tra lại bằng `ipconfig` (tìm dòng `IPv4 Address` của adapter `Wi-Fi`) nếu app mobile không gọi được API.
-  - Điện thoại thật/emulator phải **cùng mạng Wi-Fi/LAN** với máy chạy backend thì mới gọi được, không dùng `localhost`/`127.0.0.1`.
+Ứng dụng **EZone** — chat ẩn danh dành cho sinh viên EIU: match ngẫu nhiên với
+1 sinh viên khác, trò chuyện ẩn danh, có thể đồng ý lộ danh tính sau khi chat
+đủ lâu, báo cáo vi phạm, xem lại lịch sử match.
 
 ---
 
-## Phần B — Mobile Frontend, React Native
+## 1. Tech stack
 
-**Dùng React Native CLI thuần (`npx @react-native-community/cli init`), KHÔNG dùng Expo Go / Expo project.** Vì chạy CLI thuần nên các thư viện native bên dưới cần cài đặt kèm bước link native (`pod install` cho iOS, autolink cho Android) chứ không tự động như Expo.
+| Thành phần | Công nghệ | Ghi chú |
+|---|---|---|
+| Framework | **React Native 0.86.0** (React 19.2.3) | Dùng **React Native CLI thuần**, không dùng Expo |
+| Điều hướng | `@react-navigation/native` + `@react-navigation/native-stack` | Native Stack Navigator, 21 screen trong 1 Stack duy nhất |
+| Real-time | `@microsoft/signalr` | Client kết nối `ChatHub` bên backend (match, chat, typing) |
+| Lưu session | `@react-native-async-storage/async-storage` | Lưu JWT token, userId, fullname, roles |
+| Upload ảnh | `react-native-image-picker` | Chọn ảnh từ thư viện để đổi avatar |
+| Giải mã JWT | `base-64` | Tự decode payload JWT (không cần lib jwt-decode ngoài) |
+| Ngôn ngữ | JavaScript (`.jsx`), có cấu hình TypeScript sẵn nhưng không dùng triệt để | |
+| Lint | ESLint (`@react-native/eslint-config`) | |
+| Test | Jest + `react-test-renderer` | Hiện chỉ có test mặc định của RN CLI, xem mục 9 |
 
-Stack đề xuất: `@react-navigation/native` + `react-native-screens`, `react-native-safe-area-context`, `react-native-gesture-handler` (điều hướng), `@microsoft/signalr` (client cho ChatHub, cần thêm `react-native-url-polyfill`), `@react-native-async-storage/async-storage` (thay cho `localStorage`), `react-native-image-picker` (thay input file upload avatar).
-
-### Cấu trúc thư mục project
-
-React Native không bắt buộc cấu trúc thư mục nào cả — CLI init mặc định chỉ tạo `App.tsx` ở root, không có `src/`. Cấu trúc dưới đây là quy ước cộng đồng hay dùng nhất (type-based: chia theo vai trò api/components/screens), áp dụng cho project này để 3 người cùng làm không đụng file nhau:
+## 2. Cấu trúc thư mục thực tế
 
 ```
-EZoneMobile/
-├── android/                  # native Android project (RN CLI tự sinh)
-├── ios/                       # native iOS project (RN CLI tự sinh, cần pod install)
+Mobile/
+├── android/ , ios/              # Native project (RN CLI tự sinh)
+├── App.jsx                      # Root component — enableScreens(false) + <AppNavigator/>
+├── index.js                     # Entry point RN
 ├── src/
-│   ├── api/                   # toàn bộ code gọi REST API + SignalR, không rải rác trong screen
-│   │   ├── client.js           # instance fetch/axios dùng chung, tự đính "Authorization: Bearer <token>"
-│   │   ├── authApi.js          # login, logout
-│   │   ├── userApi.js          # register, activate, me, update profile
-│   │   ├── chatRoomApi.js       # active room, history, detail, leave
-│   │   ├── reportApi.js        # create/list report
-│   │   ├── revealApi.js        # request reveal, get identity
-│   │   └── chatConnection.js    # setup SignalR HubConnection (tương đương chatService.js bên web)
-│   │
-│   ├── components/             # UI nhỏ, tái sử dụng nhiều screen (nút, bubble chat, avatar...)
-│   │   ├── ChatBubble.jsx
-│   │   ├── ActionButton.jsx
-│   │   ├── TypingIndicator.jsx
-│   │   └── ...
-│   │
-│   ├── screens/                # mỗi screen 1 folder riêng, map đúng danh sách screen bên dưới
-│   │   ├── Auth/
-│   │   │   ├── LoginScreen.jsx
-│   │   │   ├── RegisterScreen.jsx
-│   │   │   └── ActivateScreen.jsx
-│   │   ├── Home/
-│   │   ├── Waiting/
-│   │   ├── Chat/
-│   │   │   ├── ChatRoomScreen.jsx
-│   │   │   ├── ReportUserScreen.jsx
-│   │   │   └── IdentityRevealedScreen.jsx
-│   │   ├── Profile/
-│   │   ├── History/
-│   │   ├── Settings/
-│   │   └── Admin/
-│   │
+│   ├── screens/                 # 21 màn hình — mỗi file 1 screen (xem mục 4)
+│   ├── components/              # UI dùng lại nhiều nơi (xem mục 5)
 │   ├── navigation/
-│   │   └── AppNavigator.jsx    # khai báo Stack/Tab navigator, danh sách route
-│   │
-│   ├── context/                # AuthContext giữ token/userId hiện tại (thay cho localStorage bên web)
-│   │   └── AuthContext.jsx
-│   │
-│   ├── hooks/                  # custom hook tái sử dụng (VD useChatConnection, useAuth)
-│   │
-│   ├── constants/
-│   │   └── config.js           # BASE_URL (IP LAN backend, xem mục A7), hằng số dùng chung
-│   │
-│   ├── utils/                  # hàm tiện ích thuần (format thời gian, validate email...)
-│   │
-│   └── assets/
-│       ├── images/
-│       └── fonts/
-│
-├── __tests__/
-├── App.tsx                     # chỉ render <AppNavigator /> bọc trong <AuthProvider>
-├── index.js
-├── package.json
-├── babel.config.js
-├── metro.config.js
-└── tsconfig.json
+│   │   └── AppNavigator.jsx     # Khai báo toàn bộ 21 route trong 1 Native Stack
+│   ├── services/                # Toàn bộ code gọi API/SignalR/storage (xem mục 6)
+│   │   ├── api.js                # apiRequest() dùng chung + mọi hàm gọi REST API
+│   │   ├── chatService.js        # Tạo SignalR HubConnection
+│   │   ├── revealApi.js          # 3 hàm gọi RevealController
+│   │   └── storage.js            # Quản lý session trong AsyncStorage
+│   ├── utils/
+│   │   └── jwt.js                # Tự decode JWT, check còn hạn không (không gọi API)
+│   └── constants/
+│       ├── theme.js               # colors, spacing, cartoonShadow, fonts (toàn bộ monospace)
+│       └── config.js              # BASE_URL / API_BASE_URL / HUB_URL
+└── __tests__/App.test.tsx        # Test mặc định RN CLI
 ```
 
-Danh sách màn hình theo 3 giai đoạn ưu tiên. **Làm xong Phase 1 là app chạy được luồng chính** (login → match → chat), Phase 2-3 bổ sung cho đủ 20+ screens theo yêu cầu môn học.
+> `src/api/`, `src/context/`, `src/assets/` còn tồn tại (file `.gitkeep`) từ
+> bản kế hoạch ban đầu nhưng **không dùng tới** trong bản triển khai thật —
+> logic gọi API dồn hết vào `src/services/`, session quản lý trực tiếp qua
+> AsyncStorage (`storage.js`) thay vì dùng React Context riêng.
 
-### Phase 1 — Luồng chính (bắt buộc, làm trước)
-1. **Splash screen** — check token đã lưu (AsyncStorage) còn hạn không, tự chuyển vào Home hoặc Login.
-2. **Login screen** — gọi `POST /api/Auth/login`, lưu `token` + `userId` vào AsyncStorage.
-3. **Register screen** — gọi `POST /api/Users/register`.
-4. **Activate account screen** — nhập email + code, gọi `POST /api/Users/activate`.
-5. **Home screen** — nút "Find a match", hiển thị tên/nickname, entry point vào các mục khác.
-6. **Rules / About EZone screen** — nội dung tĩnh (copy từ phần "EZone Rules" trong `login.html` cũ).
-7. **Waiting / Finding match screen** — connect SignalR, gọi `FindMatch`, lắng nghe event `Matched`/`WaitingForMatch` (logic y hệt `WaitingScreen.jsx` bản web, viết lại UI bằng RN).
-8. **Match success screen** — hiện khi nhận event `Matched` (tách từ modal web thành 1 screen riêng, có animation ngắn rồi tự chuyển qua Chat room).
-9. **Chat room screen** — core: `SendMessage`, `ReceiveMessage`, `Typing`, `JoinRoom`, `LeaveRoom` (logic y hệt `AnonymousChatRoom.jsx` bản web).
-10. **Report user screen** — tách từ dialog web thành screen riêng, gọi `POST /api/ChatReports`.
-11. **Identity revealed screen** — tách từ dialog web thành screen riêng, gọi `POST /api/Reveal/{roomId}/{userId}` + `GET /api/Reveal/{roomId}/identity/{userId}`.
-12. **Logout confirmation screen** — gọi `POST /api/Auth/logout`, xoá token khỏi storage.
+## 3. Chạy project
 
-### Phase 2 — Profile & lịch sử (cần API A1, A2, A3 ở Phần A)
-13. **My profile screen** — `GET /api/Users/me`.
-14. **Edit profile screen** — `PUT /api/Users/{id}` (fullname, gender, majorCode, socialLink).
-15. **Change avatar screen** — dùng `react-native-image-picker`, gửi `multipart/form-data` tới `PUT /api/Users/{id}`.
-16. **Match history (list) screen** — `GET /api/ChatRooms/history/{userId}`.
-17. **Match detail screen** — `GET /api/ChatRooms/{roomId}`.
-18. **My reports (list) screen** — `GET /api/ChatReports/my/{userId}`.
-19. **Report detail screen** — hiển thị chi tiết 1 report user đã gửi.
+```bash
+cd Mobile
+npm install
+npx react-native start                              # Metro bundler
+npx react-native run-android --device=<emulator-id>  # Cài & chạy (terminal khác)
+```
 
-### Phase 3 — Settings, Admin, phụ trợ (làm sau cùng nếu còn thời gian)
-20. **Settings screen** — theme toggle, thông báo bật/tắt (local state, không cần API).
-21. **Notification / history log screen** — gộp các sự kiện nhận được (bị report, được reveal...) hiển thị dạng list.
-22. **Search / filter (match preferences) screen** — cần API A5.
-23. **Admin — reports list screen** — `GET /api/ChatReports` (map từ `admin-reports.html` cũ).
-24. **Admin — report detail / ban action screen** — `POST /api/ChatReports/{reportId}/ban`, `DELETE /api/ChatReports/{reportId}`.
-25. **Admin — dashboard/stats screen** — cần API A6.
-
-> Tổng cộng 25 screen được liệt kê (dư so với mức tối thiểu 20) — nếu thiếu thời gian có thể bỏ bớt vài cái ở Phase 3 (VD gộp Settings + Notification, hoặc bỏ Search/Filter nếu A5 không kịp làm) mà vẫn đạt yêu cầu tối thiểu.
-
-### Việc kỹ thuật cần làm trước khi vào từng screen
-- [ ] Setup project bằng React Native CLI (không dùng Expo Go), cài các thư viện điều hướng + SignalR + storage ở trên, chạy `pod install` (iOS) để link native.
-- [ ] Viết `src/api/client.js` dùng chung: base URL đọc từ `src/constants/config.js` (IP LAN của backend, xem mục A7), tự đính kèm `Authorization: Bearer <token>` từ AsyncStorage vào mọi request.
-- [ ] Viết `src/api/chatConnection.js` dùng chung cho SignalR (tương đương `chatService.js` bản web, đổi URL cứng thành config).
+Cấu hình base URL trong `src/constants/config.js`:
+```js
+export const BASE_URL = 'http://10.0.2.2:5044';  // 10.0.2.2 = alias localhost cho Android Emulator
+export const API_BASE_URL = `${BASE_URL}/api`;
+export const HUB_URL = `${BASE_URL}/chatHub`;
+```
+Chạy trên điện thoại thật: đổi `BASE_URL` thành IP LAN thật của máy chạy backend.
 
 ---
 
-## Phần C — Test / Docs / Integration
+## 4. Danh sách 21 screens — vai trò từng màn
 
-- [ ] Viết test case cho từng API ở Phần A (dùng Swagger hoặc Postman) — đặc biệt test kỹ 2 bug vừa fix ở A4 (leave room có xóa message chưa, userId sai định dạng có bị crash không).
-- [ ] Viết test case luồng chính trên mobile: register → activate → login → match → chat → report/reveal → leave → xem lại match history.
-- [ ] Theo dõi tiến độ 20+ screens, đảm bảo mỗi screen đều nối đúng API thật (không còn mock data) trước khi tổng hợp báo cáo.
-- [ ] Chuẩn bị Project Report + slide theo cấu trúc trong `Project Requirements_v2.pdf` (Introduction, Technology used, Analysis and design, Results and future work, References).
-- [ ] Hỗ trợ tích hợp: khi cắm API thật vào app, cùng test trên điện thoại thật/emulator qua IP LAN thật (không phải localhost).
+| # | Route (trong `AppNavigator`) | File | Vai trò | API/Service gọi |
+|---|---|---|---|---|
+| 1 | `Splash` | `SplashScreen.jsx` | Màn khởi động — tự kiểm tra JWT còn hạn (`isTokenValid`, giải mã cục bộ, **không gọi API**) rồi tự chuyển `Home` hoặc `Login` | `hasValidSession()` |
+| 2 | `Login` | `LoginScreen.jsx` | Form đăng nhập Email/Password, lưu session sau khi login | `login()` |
+| 3 | `Register` | `RegisterScreen.jsx` | Form đăng ký tài khoản mới (Fullname/Email/Major/Password) | `registerUser()` |
+| 4 | `ActivateAccount` | `ActivateAccountScreen.jsx` | Nhập email + mã kích hoạt 6 số (gửi qua email) để kích hoạt tài khoản | `activateAccount()` |
+| 5 | `Home` | `HomeScreen.jsx` | Màn trung tâm sau khi login — hiển thị nickname/userId, các lối vào: Find Match, My Profile, Chat History, My Reports, Rules/About, Settings, **Admin Reports (chỉ hiện nếu role có "Admin")**, Log Out | `getSession()` |
+| 6 | `RulesAbout` | `RulesAboutScreen.jsx` | Nội dung tĩnh: quy tắc ứng xử trong app | — |
+| 7 | `About` | `AboutScreen.jsx` | Nội dung tĩnh: giới thiệu app + version + công nghệ dùng | — |
+| 8 | `Waiting` | `WaitingScreen.jsx` | Kết nối SignalR, gọi `FindMatch`, hiện hiệu ứng chờ (đếm giờ chờ + số người online giả lập) cho tới khi nhận event `Matched` | SignalR `FindMatch` |
+| 9 | `MatchSuccess` | `MatchSuccessScreen.jsx` | Hiệu ứng chúc mừng match thành công (animation), tự động chuyển sang `ChatRoom` sau 1.2s | — |
+| 10 | `ChatRoom` | `ChatRoomScreen.jsx` | **Màn core** — nạp lại lịch sử tin nhắn (`getMessages`), kết nối SignalR (gửi/nhận tin real-time, typing indicator), yêu cầu Reveal danh tính, điều hướng sang Report/Logout, rời phòng (Leave) | `getMessages()`, SignalR (`JoinRoom`/`SendMessage`/`Typing`/`LeaveRoom`), `revealApi.js` |
+| 11 | `ReportUser` | `ReportUserScreen.jsx` | Form báo cáo vi phạm (chọn lý do + mô tả tối thiểu 10 ký tự nếu có nhập) | `createReport()` |
+| 12 | `Profile` | `ProfileScreen.jsx` | Xem hồ sơ cá nhân (chỉ xem — tự refetch mỗi lần quay lại màn qua `useFocusEffect`), đổi avatar tại chỗ | `getMyProfile()`, `updateProfile()` (avatar) |
+| 13 | `EditProfile` | `EditProfileScreen.jsx` | Form sửa Fullname/Major/Gender/SocialLink (tách riêng khỏi màn xem Profile) | `updateProfile()` |
+| 14 | `LogoutConfirm` | `LogoutConfirmScreen.jsx` | Màn xác nhận đăng xuất (không phải modal) | `logoutRequest()`, `clearSession()` |
+| 15 | `ChatHistory` | `ChatHistoryScreen.jsx` | Danh sách các phòng chat **đã kết thúc** (`Status=Closed`) — List screen | `getChatHistory()` |
+| 16 | `ChatRoomDetail` | `ChatRoomDetailScreen.jsx` | Chi tiết 1 phòng đã kết thúc: trạng thái, thời gian, Affinity Score, đã reveal chưa — Detail screen | `getChatRoomDetail()` |
+| 17 | `MyReports` | `MyReportsScreen.jsx` | Danh sách report **do chính user gửi**, xem trạng thái xử lý (Pending/Resolved) | `getMyReports()` |
+| 18 | `Settings` | `SettingsScreen.jsx` | Toggle Notifications/Sound (lưu AsyncStorage cục bộ), lối tắt Edit Profile, lối vào Delete Account | AsyncStorage local |
+| 19 | `DeleteAccount` | `DeleteAccountScreen.jsx` | Bắt nhập lại mật khẩu + xác nhận 2 lớp trước khi xoá tài khoản (soft delete) | `deleteAccount()` |
+| 20 | `AdminReportList` | `AdminReportListScreen.jsx` | *(chỉ Admin)* Danh sách toàn bộ report — filter theo status, sort, phân trang, action Ban/Delete nhanh | `getAdminReports()`, `banReportedUser()`, `deleteReport()` |
+| 21 | `AdminReportDetail` | `AdminReportDetailScreen.jsx` | *(chỉ Admin)* Chi tiết 1 report, đổi trạng thái xử lý (Update data API), Ban nhanh | `updateReportStatus()`, `banReportedUser()` |
+
+### Luồng điều hướng chính
+
+```
+Splash ─┬─(có session)──> Home
+        └─(chưa login)──> Login ──> Register ──> ActivateAccount ──> Login
+
+Home ──> Waiting ──(matched)──> MatchSuccess ──(auto)──> ChatRoom
+                                                              ├──> ReportUser
+                                                              ├──> (Reveal modal — IdentityRevealedScreen)
+                                                              └──(Leave)──> Waiting
+
+Home ──> Profile ──> EditProfile
+Home ──> ChatHistory ──> ChatRoomDetail
+Home ──> MyReports
+Home ──> Settings ──> DeleteAccount
+Home ──> AdminReportList ──> AdminReportDetail   (chỉ role Admin)
+Home / Profile ──> LogoutConfirm ──> Login
+```
 
 ---
 
-## Lưu ý chung
-- Business logic (matchmaking, moderation từ khoá nhạy cảm, reveal theo affinity score) **giữ nguyên như bản web**, không cần thiết kế lại — chỉ UI và cách gọi API là mới.
-- Trước khi báo cáo với giảng viên, xác nhận lại chủ đề "anonymous chat/matching app" có được chấp nhận không, vì các ví dụ trong đề bài chủ yếu là app dạng danh mục/CRUD (food ordering, booking...), khác thể loại real-time chat.
+## 5. Components dùng chung (`src/components/`)
+
+| Component | Vai trò |
+|---|---|
+| `Screen.jsx` | Wrapper chuẩn cho mọi screen — `SafeAreaView` + `ScrollView` tuỳ chọn (`scroll={false}` cho screen có `FlatList` riêng, tránh lỗi nested VirtualizedList) |
+| `CartoonButton.jsx` | Nút bấm dùng chung toàn app — 3 variant `primary`/`secondary`/`danger`, có `loading` state (ActivityIndicator) |
+| `InfoCard.jsx` | Card bo góc viền đậm dùng chung (style "cartoon") |
+| `TextInputField.jsx` | Input có label + hiện lỗi validate |
+| `MessageBubble.jsx` | Bong bóng tin nhắn chat — style khác nhau cho tin của mình (`isOwn`) và của đối phương |
+| `TypingIndicator.jsx` | Hiện "Typing..." khi đối phương đang gõ |
+| `IdentityRevealedScreen.jsx` | **Thực chất là Modal** (đặt tên gây nhầm là "Screen" nhưng không phải route) — hiện thông tin thật của đối phương sau khi cả 2 bên đồng ý Reveal, dùng trong `ChatRoomScreen` |
+| `LogoutConfirmationDialog.jsx` | ⚠️ **Dead code** — modal xác nhận logout kiểu cũ, đã bị thay bằng screen `LogoutConfirmScreen` (route riêng), không còn được import ở đâu cả. Giữ lại file nhưng không dùng. |
+
+---
+
+## 6. Services layer (`src/services/`)
+
+### `api.js` — trung tâm gọi REST API
+- `apiRequest(endpoint, options)`: hàm gốc mọi API khác đều gọi qua đây —
+  tự lấy JWT từ `storage.js` và đính `Authorization: Bearer <token>`, tự
+  phân biệt body là `FormData` (upload avatar) hay JSON thường để không đè
+  sai `Content-Type`, tự parse lỗi từ response backend thành `Error` ném ra
+  cho screen bắt bằng `try/catch`.
+- Toàn bộ hàm nghiệp vụ export từ đây: `login`, `registerUser`,
+  `activateAccount`, `getMyProfile`, `updateProfile`, `deleteAccount`,
+  `logoutRequest`, `getChatHistory`, `getChatRoomDetail`, `getMessages`,
+  `createReport`, `getMyReports`, `getAdminReports`, `updateReportStatus`,
+  `banReportedUser`, `deleteReport`.
+- `ROOM_STATUS_LABELS`: map số → tên trạng thái phòng (backend trả
+  `ChatRooms.Status` dạng số vì không cấu hình `JsonStringEnumConverter`).
+
+### `chatService.js`
+- `createChatConnection(userId)`: tạo `HubConnection` SignalR trỏ tới
+  `HUB_URL?userId=<id>`, bật `withAutomaticReconnect()`.
+
+### `revealApi.js`
+- `requestReveal`, `getRevealStatus`, `getRevealedIdentity` — gọi 3
+  endpoint của `RevealController`.
+
+### `storage.js`
+- Quản lý session trong `AsyncStorage`: `saveSession`, `getSession`,
+  `clearSession`, `hasValidSession` (kết hợp với `utils/jwt.js` để check
+  token còn hạn mà không cần gọi API).
+
+### `utils/jwt.js`
+- Tự decode payload JWT (base64url, không cần thư viện `jwt-decode`), đọc
+  `exp` để biết token còn hạn hay không — dùng ở `SplashScreen` quyết định
+  vào thẳng `Home` hay bắt về `Login`.
+
+---
+
+## 7. Kỹ thuật / pattern đã áp dụng
+
+1. **Session persistence không cần gọi API mỗi lần mở app** — decode JWT cục
+   bộ (`utils/jwt.js`) để check hạn, chỉ gọi API khi thực sự thao tác.
+2. **`useFocusEffect`** (`@react-navigation/native`) — tự refetch dữ liệu mỗi
+   khi quay lại 1 màn hình (Profile, ChatHistory, MyReports,
+   AdminReportList) thay vì chỉ fetch 1 lần lúc mount, đảm bảo dữ liệu luôn
+   mới sau khi chỉnh sửa ở màn khác.
+3. **Real-time 2 chiều bằng SignalR** — không polling, dùng Group theo
+   `roomId` để broadcast tin nhắn/typing đúng người trong phòng.
+4. **Upload ảnh multipart/form-data** — `react-native-image-picker` lấy
+   file từ thư viện ảnh, đóng gói vào `FormData`, `apiRequest` tự nhận diện
+   để không set sai `Content-Type`.
+5. **Role-based UI** — nút "Admin Reports" trên Home chỉ hiện nếu
+   `session.roles.includes('Admin')` (đọc từ claim JWT lúc login).
+6. **`enableScreens(false)` trong `App.jsx`** — workaround 1 bug timing giữa
+   Fabric (New Architecture của RN 0.86) và `react-native-screens`
+   (`FabricUIManager` NullPointerException), tắt native-screens để fallback
+   về `View` thường, đổi lại animation chuyển màn không mượt bằng nhưng ổn
+   định.
+7. **Toàn bộ font family set `monospace`** (`constants/theme.js`) — quyết
+   định thiết kế đồng bộ toàn app.
+8. **ESLint** theo cấu hình chính thức `@react-native/eslint-config` — chạy
+   sạch (0 lỗi) trên toàn bộ code hiện tại.
+
+---
+
+## 8. Đối chiếu với yêu cầu môn học
+
+| Yêu cầu | Đạt |
+|---|---|
+| Tối thiểu 20 screens | **21 screens** (mục 4) |
+| Đăng nhập/Đăng ký | ✅ có kèm activate qua email |
+| Kết nối API thật, không mock data | ✅ toàn bộ 21 screens đều gọi API/service thật |
+| CRUD (List/Detail/Create/Update/Delete) | ✅ trải trên ChatHistory-Detail (List/Detail), ReportUser (Create), AdminReportDetail (Update), AdminReportList (Delete) |
+| Vai trò người dùng khác nhau (User/Admin) | ✅ role-based UI + `[Authorize(Roles="Admin")]` phía backend |
+
+---
+
+## 9. Testing hiện tại (cần lưu ý khi viết report)
+
+`__tests__/App.test.tsx` hiện chỉ là **test mặc định của React Native CLI**
+(render `<App/>` kiểm tra không crash) — **chưa có test riêng cho logic
+nghiệp vụ mobile** (chưa test service `api.js`, chưa test flow đăng
+nhập/chat). Đề bài không bắt buộc phải có automated test cho mobile (chỉ
+yêu cầu hoạt động "Test application functions" — có thể làm test thủ công,
+xem `DEMO_SCRIPT.md`), nhưng nên biết rõ để không nhỡ nói "có test coverage"
+trong report nếu không đúng thực tế.
+
+## 10. Hạn chế đã biết / hướng phát triển tiếp
+
+- Không tự động "vào lại phòng chat" khi mở lại app giữa phiên chat dở —
+  quyết định thiết kế có chủ đích (xem giải thích trong `Backend/README.md`
+  mục 9.5), không phải thiếu sót.
+- Nội dung tin nhắn không lưu trữ vĩnh viễn (bị xoá khi phòng đóng) — đúng
+  tinh thần "chat ẩn danh", không phải bug.
+- Chưa có cơ chế refresh token — JWT hết hạn sau 3 giờ phải đăng nhập lại
+  thủ công.
+- `Frontend/Chat` (web) chỉ là công cụ test nội bộ do 1 thành viên làm thêm,
+  không thuộc phạm vi bài nộp Mobile, không có luồng auth đầy đủ.

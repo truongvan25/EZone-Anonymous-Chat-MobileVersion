@@ -8,6 +8,7 @@ using System.Text;
 using WebChatEIU.Data;
 using WebChatEIU.DTOs;
 using WebChatEIU.Models;
+using WebChatEIU.Services;
 
 namespace WebChatEIU.Controllers
 {
@@ -17,11 +18,19 @@ namespace WebChatEIU.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly IConfiguration _configuration;
+        private readonly IEmailService _emailService;
+        private readonly ILogger<UsersController> _logger;
 
-        public UsersController(ApplicationDbContext context, IConfiguration configuration)
+        public UsersController(
+            ApplicationDbContext context,
+            IConfiguration configuration,
+            IEmailService emailService,
+            ILogger<UsersController> logger)
         {
             _context = context;
             _configuration = configuration;
+            _emailService = emailService;
+            _logger = logger;
         }
 
 
@@ -57,10 +66,22 @@ namespace WebChatEIU.Controllers
             _context.Users.Add(newUser);
             await _context.SaveChangesAsync();
 
+            // Không trả activationCode trong response nữa — trước đây ai gọi API
+            // cũng tự lấy được code và tự kích hoạt, làm mất hết ý nghĩa xác thực
+            // qua email. Gửi thất bại cũng không rollback đăng ký, chỉ log lỗi để
+            // debug — tài khoản vẫn tạo xong, user có thể xin cấp lại code sau.
+            try
+            {
+                await _emailService.SendActivationEmailAsync(newUser.Email, newUser.Fullname, activationCode);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send activation email to {Email}", newUser.Email);
+            }
+
             return Ok(new
             {
-                message = "Registration successful!",
-                activationCode = activationCode
+                message = "Registration successful! Please check your email for the activation code."
             });
         }
 
@@ -289,6 +310,54 @@ namespace WebChatEIU.Controllers
             return Ok(user);
         }
 
+
+        // ============================ Delete account (soft delete) =================================
+        [Authorize]
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteAccount(int id, [FromBody] DeleteAccountDto dto)
+        {
+            int currentUserId = int.Parse(User.FindFirst("userId").Value);
+
+            if (id != currentUserId)
+            {
+                return Forbid();
+            }
+
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == id);
+
+            if (user == null)
+            {
+                return NotFound("User not found");
+            }
+
+            if (string.IsNullOrEmpty(dto?.Password) || !BCrypt.Net.BCrypt.Verify(dto.Password, user.Password))
+            {
+                return BadRequest("Incorrect password");
+            }
+
+            // Soft delete: chỉ đánh dấu đã xóa + khóa đăng nhập (nhờ HasQueryFilter
+            // trong ApplicationDbContext), KHÔNG đụng tới ChatRooms/Messages/ChatReports
+            // để giữ nguyên lịch sử chat/report cho phía đối phương.
+            user.IsDeleted = true;
+            user.DeletedAt = DateTime.UtcNow;
+
+            // Đóng các room đang Waiting/Active của user này để đối phương không bị
+            // treo chờ vô thời hạn. Không xóa Messages (khác với hành động Leave).
+            var openRooms = await _context.ChatRooms
+                .Where(r => (r.User1Id == id || r.User2Id == id)
+                    && (r.Status == ChatRooms.RoomStatus.Waiting || r.Status == ChatRooms.RoomStatus.Active))
+                .ToListAsync();
+
+            foreach (var room in openRooms)
+            {
+                room.Status = ChatRooms.RoomStatus.Closed;
+                room.UpdatedAt = DateTime.UtcNow;
+            }
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Account deleted." });
+        }
 
     }
 }

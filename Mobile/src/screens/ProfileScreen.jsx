@@ -1,22 +1,20 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   SafeAreaView,
   View,
   Text,
   Image,
-  TextInput,
   Pressable,
   ScrollView,
   StyleSheet,
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { fonts } from '../constants/theme';
 import CartoonButton from '../components/CartoonButton';
 import { launchImageLibrary } from 'react-native-image-picker';
-import LogoutConfirmationDialog from '../components/LogoutConfirmationDialog';
-import { getMyProfile, updateProfile, logoutRequest } from '../services/api';
-import { clearSession } from '../services/storage';
+import { getMyProfile, updateProfile } from '../services/api';
 import { BASE_URL } from '../constants/config';
 
 const COLORS = {
@@ -39,55 +37,30 @@ const ProfileScreen = ({ navigation }) => {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const [isEditing, setIsEditing] = useState(false);
-  const [draft, setDraft] = useState(null);
-  const [saving, setSaving] = useState(false);
-
-  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
-  const [loggingOut, setLoggingOut] = useState(false);
-
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
-  useEffect(() => {
-    let mounted = true;
+  // Refetch mỗi lần màn hình được focus lại (vd: quay về từ EditProfile)
+  // để hiển thị dữ liệu mới nhất thay vì bị stale.
+  useFocusEffect(
+    useCallback(() => {
+      let mounted = true;
 
-    (async () => {
-      try {
-        const data = await getMyProfile();
-        if (mounted) setProfile(data);
-      } catch (error) {
-        Alert.alert('Load profile failed', error.message || 'Please try again.');
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
+      (async () => {
+        try {
+          const data = await getMyProfile();
+          if (mounted) setProfile(data);
+        } catch (error) {
+          Alert.alert('Load profile failed', error.message || 'Please try again.');
+        } finally {
+          if (mounted) setLoading(false);
+        }
+      })();
 
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  const handleStartEdit = () => {
-    setDraft(profile);
-    setIsEditing(true);
-  };
-
-  const handleCancelEdit = () => {
-    setIsEditing(false);
-  };
-
-  const handleSaveProfile = async () => {
-    setSaving(true);
-    try {
-      await updateProfile(profile.userId, draft);
-      setProfile(draft);
-      setIsEditing(false);
-    } catch (error) {
-      Alert.alert('Update failed', error.message || 'Please try again.');
-    } finally {
-      setSaving(false);
-    }
-  };
+      return () => {
+        mounted = false;
+      };
+    }, [])
+  );
 
   const handleChangePhoto = () => {
   launchImageLibrary({ mediaType: 'photo', quality: 0.8, selectionLimit: 1 }, async response => {
@@ -110,19 +83,6 @@ const ProfileScreen = ({ navigation }) => {
 };
 
 
-  const handleConfirmLogout = async () => {
-    setLoggingOut(true);
-    try {
-      await logoutRequest();
-    } catch {
-      // Backend logout lỗi vẫn xóa local session để người dùng thoát app.
-    }
-    await clearSession();
-    setLoggingOut(false);
-    setShowLogoutDialog(false);
-    navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
-  };
-
   if (loading) {
     return (
       <SafeAreaView style={[styles.safeArea, styles.center]}>
@@ -139,8 +99,7 @@ const ProfileScreen = ({ navigation }) => {
     );
   }
 
-  const shown = isEditing ? draft : profile;
-  const avatarUri = shown.avatarUrl ? `${BASE_URL}${shown.avatarUrl}` : null;
+  const avatarUri = profile.avatarUrl ? `${BASE_URL}${profile.avatarUrl}` : null;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -176,85 +135,36 @@ const ProfileScreen = ({ navigation }) => {
           <View style={styles.shadowLayer} />
 
           <View style={styles.card}>
-            <ProfileField
-              label="Full Name"
-              value={shown.fullname}
-              editable={isEditing}
-              onChangeText={text => setDraft(d => ({ ...d, fullname: text }))}
-            />
-
-            <ProfileField
-              label="Major"
-              value={shown.majorCode}
-              editable={isEditing}
-              onChangeText={text => setDraft(d => ({ ...d, majorCode: text }))}
-            />
-
-            <ProfileField
-              label="Gender"
-              value={shown.gender}
-              editable={isEditing}
-              onChangeText={text => setDraft(d => ({ ...d, gender: text }))}
-            />
-
-            <ProfileField label="Email" value={shown.email} editable={false} helperText="Email không thể thay đổi" />
-
-            <ProfileField
-              label="Social Link"
-              value={shown.socialLink}
-              editable={isEditing}
-              onChangeText={text => setDraft(d => ({ ...d, socialLink: text }))}
-              isLast
-            />
+            <ProfileField label="Full Name" value={profile.fullname} />
+            <ProfileField label="Major" value={profile.majorCode} />
+            <ProfileField label="Gender" value={profile.gender} />
+            <ProfileField label="Email" value={profile.email} helperText="Email không thể thay đổi" />
+            <ProfileField label="Social Link" value={profile.socialLink} isLast />
           </View>
         </View>
 
         {/* ---- Buttons ---- */}
-        {isEditing ? (
-          <View style={styles.editButtonRow}>
-            <Pressable style={[styles.actionButton, styles.cancelButton]} onPress={handleCancelEdit} disabled={saving}>
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </Pressable>
-            <Pressable style={[styles.actionButton, styles.saveButton]} onPress={handleSaveProfile} disabled={saving}>
-              {saving ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Text style={styles.saveButtonText}>Save changes</Text>}
-            </Pressable>
-          </View>
-        ) : (
-          <Pressable style={[styles.actionButton, styles.editButton]} onPress={handleStartEdit}>
-            <Text style={styles.editButtonText}>Edit Profile</Text>
-          </Pressable>
-        )}
+        <Pressable
+          style={[styles.actionButton, styles.editButton]}
+          onPress={() => navigation.navigate('EditProfile', { profile })}
+        >
+          <Text style={styles.editButtonText}>Edit Profile</Text>
+        </Pressable>
 
-        <Pressable style={[styles.actionButton, styles.logoutButton]} onPress={() => setShowLogoutDialog(true)}>
+        <Pressable style={[styles.actionButton, styles.logoutButton]} onPress={() => navigation.navigate('LogoutConfirm')}>
           <Text style={styles.logoutButtonText}>Log Out</Text>
         </Pressable>
 
         <CartoonButton title="BACK" variant="secondary" onPress={() => navigation.goBack()} />
       </ScrollView>
-
-      <LogoutConfirmationDialog
-        visible={showLogoutDialog}
-        onCancel={() => setShowLogoutDialog(false)}
-        onConfirm={handleConfirmLogout}
-        loading={loggingOut}
-      />
     </SafeAreaView>
   );
 };
 
-const ProfileField = ({ label, value, editable, onChangeText, helperText, isLast }) => (
+const ProfileField = ({ label, value, helperText, isLast }) => (
   <View style={[styles.field, isLast && styles.fieldLast]}>
     <Text style={styles.fieldLabel}>{label}</Text>
-    {editable ? (
-      <TextInput
-        value={value}
-        onChangeText={onChangeText}
-        style={styles.fieldInput}
-        placeholderTextColor="#9CA3AF"
-      />
-    ) : (
-      <Text style={styles.fieldValue}>{value || 'N/A'}</Text>
-    )}
+    <Text style={styles.fieldValue}>{value || 'N/A'}</Text>
     {helperText ? <Text style={styles.fieldHelper}>{helperText}</Text> : null}
   </View>
 );

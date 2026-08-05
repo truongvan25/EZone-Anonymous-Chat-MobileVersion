@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebChatEIU.Data;
+using WebChatEIU.DTOs;
 using WebChatEIU.Models;
 
 namespace WebChatEIU.Controllers
@@ -91,6 +92,37 @@ namespace WebChatEIU.Controllers
             return Ok(new
             {
                 message = "Reported user has been banned."
+            });
+        }
+
+        // Update data API còn thiếu (khác Update profile) — admin đổi trạng thái
+        // xử lý report mà không cần ban user, dùng cho AdminReportDetailScreen.
+        [Authorize(Roles = "Admin")]
+        [HttpPut("{reportId}")]
+        public async Task<IActionResult> UpdateReportStatus(int reportId, [FromBody] UpdateReportStatusDto dto)
+        {
+            var report = await _context.ChatReports.FindAsync(reportId);
+
+            if (report == null)
+            {
+                return NotFound("Report not found");
+            }
+
+            var allowedStatuses = new[] { "Pending", "Resolved" };
+
+            if (string.IsNullOrWhiteSpace(dto.Status) || !allowedStatuses.Contains(dto.Status))
+            {
+                return BadRequest("Status must be either 'Pending' or 'Resolved'");
+            }
+
+            report.Status = dto.Status;
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                message = "Report status updated.",
+                reportId = report.ReportId,
+                status = report.Status
             });
         }
 

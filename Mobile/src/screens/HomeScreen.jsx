@@ -4,8 +4,7 @@ import CartoonButton from '../components/CartoonButton';
 import InfoCard from '../components/InfoCard';
 import Screen from '../components/Screen';
 import { cartoonShadow, colors, fonts } from '../constants/theme';
-import { clearSession, getSession } from '../services/storage';
-import { logoutRequest } from '../services/api';
+import { getSession } from '../services/storage';
 
 export default function HomeScreen({ navigation }) {
   const [session, setSession] = useState({ fullname: '', userId: '', roles: [] });
@@ -23,16 +22,6 @@ export default function HomeScreen({ navigation }) {
 
   loadSession();
 }, []);
-
-  const handleLogout = async () => {
-    try {
-      await logoutRequest();
-    } catch {
-      // Backend logout lỗi vẫn xóa local session để người dùng thoát app.
-    }
-    await clearSession();
-    navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
-  };
 
   const goFindMatch = () => {
     if (!session.userId) {
@@ -57,11 +46,14 @@ export default function HomeScreen({ navigation }) {
 
       <CartoonButton title="FIND A MATCH" onPress={goFindMatch} style={styles.button} />
       <CartoonButton title="MY PROFILE" variant="secondary" onPress={() => navigation.navigate('Profile')} style={styles.button} />
+      <CartoonButton title="CHAT HISTORY" variant="secondary" onPress={() => navigation.navigate('ChatHistory')} style={styles.button} />
+      <CartoonButton title="MY REPORTS" variant="secondary" onPress={() => navigation.navigate('MyReports')} style={styles.button} />
       <CartoonButton title="RULES / ABOUT EZONE" variant="secondary" onPress={() => navigation.navigate('RulesAbout')} style={styles.button} />
+      <CartoonButton title="SETTINGS" variant="secondary" onPress={() => navigation.navigate('Settings')} style={styles.button} />
       {session.roles?.includes('Admin') && (
         <CartoonButton title="ADMIN REPORTS" variant="secondary" onPress={() => navigation.navigate('AdminReportList')} style={styles.button} />
       )}
-      <CartoonButton title="LOG OUT" variant="danger" onPress={handleLogout} style={styles.button} />
+      <CartoonButton title="LOG OUT" variant="danger" onPress={() => navigation.navigate('LogoutConfirm')} style={styles.button} />
     </Screen>
   );
 }

@@ -32,6 +32,7 @@ namespace WebChatEIU
             builder.Services.AddSignalR();
             builder.Services.AddSingleton<MatchmakingService>();
             builder.Services.AddSingleton<ModerationService>();
+            builder.Services.AddScoped<IEmailService, EmailService>();
             builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
             {
                 options.TokenValidationParameters = new TokenValidationParameters

@@ -67,34 +67,10 @@ namespace WebChatEIU.Controllers
             return Ok(room);
         }
 
-        [HttpPost("{roomId}/leave/{userId}")]
-        public async Task<IActionResult> LeaveChat(int roomId, int userId)
-        {
-            var room = await _context.ChatRooms.FindAsync(roomId);
-
-            if (room == null)
-            {
-                return NotFound("Room not found");
-            }
-
-            if (room.User1Id != userId && room.User2Id != userId)
-            {
-                return BadRequest("User is not in this room");
-            }
-
-            var messages = _context.Messages.Where(m => m.RoomId == roomId);
-
-            _context.Messages.RemoveRange(messages);
-
-            room.Status = ChatRooms.RoomStatus.Closed;
-            room.UpdatedAt = DateTime.UtcNow;
-
-            await _context.SaveChangesAsync();
-
-            return Ok(new
-            {
-                message = "Conversation ended and messages deleted."
-            });
-        }
+        // Đã xóa endpoint REST "POST {roomId}/leave/{userId}" từng nằm ở đây —
+        // đây là code chết, chưa từng được mobile/web gọi. Hành động Leave thật
+        // sự chạy qua ChatHub.LeaveRoom() (SignalR invoke), có logic tương tự
+        // (xóa Messages, đóng room). Giữ cả 2 bản dễ lệch nhau khi sửa 1 bên mà
+        // quên bên kia, nên gộp về đúng 1 nguồn duy nhất.
     }
 }

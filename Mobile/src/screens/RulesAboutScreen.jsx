@@ -26,12 +26,12 @@ export default function RulesAboutScreen({ navigation }) {
         ))}
       </InfoCard>
 
-      <InfoCard title="About EZone" style={styles.about}>
-        <Text style={styles.aboutText}>
-          EZone is an anonymous student chat app. You match with another EIU student, chat safely, and report bad behavior when needed.
-        </Text>
-      </InfoCard>
-
+      <CartoonButton
+        title="ABOUT EZONE"
+        variant="secondary"
+        onPress={() => navigation.navigate('About')}
+        style={styles.button}
+      />
       <CartoonButton title="BACK" variant="secondary" onPress={() => navigation.goBack()} style={styles.button} />
     </Screen>
   );

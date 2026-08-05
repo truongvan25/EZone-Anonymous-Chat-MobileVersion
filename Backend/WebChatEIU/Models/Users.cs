@@ -42,6 +42,12 @@ namespace WebChatEIU.Models
 
         public bool IsBanned { get; set; } = false;
 
+        // Soft delete: tài khoản "xóa" chỉ bị ẩn/khoá đăng nhập, KHÔNG xoá dữ liệu
+        // liên quan (ChatRooms/Messages/ChatReports) để không ảnh hưởng tới lịch sử
+        // của người dùng khác đã từng chat/report chung với tài khoản này.
+        public bool IsDeleted { get; set; } = false;
+        public DateTime? DeletedAt { get; set; }
+
         public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
 
         public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();

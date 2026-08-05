@@ -29,7 +29,10 @@ namespace WebChatEIU.Controllers
                 return NotFound("Room not found");
             }
 
-            if (room.AffinityScore < 1)
+            // Khớp lại với ngưỡng "canReveal" ở GetRevealStatus (AffinityScore >= 10)
+            // — trước đây chỗ này chặn ở < 1 nên gần như không có gờ chặn thật nào,
+            // lệch hẳn với ý định thiết kế ban đầu.
+            if (room.AffinityScore < 10)
             {
                 return BadRequest("Affinity score is not enough to reveal identity");
             }

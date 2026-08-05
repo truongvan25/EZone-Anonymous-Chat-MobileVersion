@@ -22,16 +22,14 @@ export default function RegisterScreen({ navigation }) {
 
     try {
       setLoading(true);
-      const result = await registerUser({ fullname, email, majorCode, password });
+      await registerUser({ fullname, email, majorCode, password });
 
       Alert.alert(
         'Registration successful',
-        result?.activationCode
-          ? `Demo activation code: ${result.activationCode}`
-          : 'Please activate your account.'
+        'Please check your email for the activation code.'
       );
 
-      navigation.navigate('ActivateAccount', { email, demoCode: result?.activationCode });
+      navigation.navigate('ActivateAccount', { email });
     } catch (error) {
       Alert.alert('Register failed', error.message || 'Please try again.');
     } finally {

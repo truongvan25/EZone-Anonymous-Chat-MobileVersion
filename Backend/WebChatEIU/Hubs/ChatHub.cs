@@ -130,6 +130,12 @@ namespace WebChatEIU.Hubs
             {
                 await Clients.GroupExcept(roomId.ToString(), Context.ConnectionId)
                     .SendAsync("PartnerDisconnected");
+
+                // Rớt kết nối (tắt app, mất mạng, logout giữa chừng...) mà chưa
+                // từng bấm LEAVE tường minh -> đóng room luôn, tránh nó bị kẹt
+                // vĩnh viễn ở Active khiến ChatHistoryScreen thiếu sót các cuộc
+                // chat kết thúc "đột ngột" thay vì kết thúc sạch qua LeaveRoom().
+                await CloseRoomAsync(roomId);
             }
 
             _matchmakingService.Disconnect(Context.ConnectionId);
@@ -262,19 +268,7 @@ namespace WebChatEIU.Hubs
             await Clients.GroupExcept(roomId.ToString(), Context.ConnectionId)
                 .SendAsync("PartnerDisconnected");
 
-            var room = await _context.ChatRooms.FindAsync(roomId);
-
-            if (room != null && room.Status != ChatRooms.RoomStatus.Closed)
-            {
-                var messages = _context.Messages.Where(m => m.RoomId == roomId);
-
-                _context.Messages.RemoveRange(messages);
-
-                room.Status = ChatRooms.RoomStatus.Closed;
-                room.UpdatedAt = DateTime.UtcNow;
-
-                await _context.SaveChangesAsync();
-            }
+            await CloseRoomAsync(roomId);
 
             await Groups.RemoveFromGroupAsync(
                 Context.ConnectionId,
@@ -283,7 +277,26 @@ namespace WebChatEIU.Hubs
             _matchmakingService.Disconnect(Context.ConnectionId);
         }
 
+        // Dùng chung cho cả LeaveRoom() (user chủ động bấm LEAVE) và
+        // OnDisconnectedAsync() (rớt kết nối/tắt app không bấm LEAVE) — chỉ 1
+        // nguồn duy nhất quyết định "đóng room" là gì, tránh lệch logic giữa
+        // 2 chỗ như REST endpoint chết đã dọn trước đó.
+        private async Task CloseRoomAsync(int roomId)
+        {
+            var room = await _context.ChatRooms.FindAsync(roomId);
 
+            if (room == null || room.Status == ChatRooms.RoomStatus.Closed)
+            {
+                return;
+            }
 
+            var messages = _context.Messages.Where(m => m.RoomId == roomId);
+            _context.Messages.RemoveRange(messages);
+
+            room.Status = ChatRooms.RoomStatus.Closed;
+            room.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+        }
     }
 }

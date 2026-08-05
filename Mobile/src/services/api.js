@@ -75,6 +75,10 @@ export function createReport({ roomId, reporterId, violatingMessage, reason }) {
   });
 }
 
+export function getMyReports() {
+  return apiRequest('/ChatReports/my');
+}
+
 export function getAdminReports({ page = 1, pageSize = 10, status = '', sortOrder = 'desc' } = {}) {
   const params = new URLSearchParams({
     page: String(page),
@@ -92,6 +96,13 @@ export function banReportedUser(reportId) {
   return apiRequest(`/ChatReports/${reportId}/ban`, { method: 'POST' });
 }
 
+export function updateReportStatus(reportId, status) {
+  return apiRequest(`/ChatReports/${reportId}`, {
+    method: 'PUT',
+    body: JSON.stringify({ Status: status }),
+  });
+}
+
 export function deleteReport(reportId) {
   return apiRequest(`/ChatReports/${reportId}`, { method: 'DELETE' });
 }
@@ -100,8 +111,33 @@ export function logoutRequest() {
   return apiRequest('/Auth/logout', { method: 'POST' });
 }
 
+// Soft delete tài khoản — backend bắt xác thực lại mật khẩu trước khi xóa,
+// chỉ đánh dấu IsDeleted chứ không xóa data liên quan.
+export function deleteAccount(userId, password) {
+  return apiRequest(`/Users/${userId}`, {
+    method: 'DELETE',
+    body: JSON.stringify({ Password: password }),
+  });
+}
+
 export function getMyProfile() {
   return apiRequest('/Users/me');
+}
+
+// ChatRooms.Status là enum bên backend (Waiting/Active/Disconnected/Closed/Expired),
+// không có JsonStringEnumConverter nên JSON trả về là số — map lại để hiển thị.
+export const ROOM_STATUS_LABELS = ['Waiting', 'Active', 'Disconnected', 'Closed', 'Expired'];
+
+export function getChatHistory(userId) {
+  return apiRequest(`/ChatRooms/history/${userId}`);
+}
+
+export function getChatRoomDetail(roomId) {
+  return apiRequest(`/ChatRooms/${roomId}`);
+}
+
+export function getMessages(roomId) {
+  return apiRequest(`/Messages/${roomId}`);
 }
 
 
