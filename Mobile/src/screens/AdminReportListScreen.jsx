@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   SafeAreaView,
   View,
@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { fonts } from '../constants/theme';
 import CartoonButton from '../components/CartoonButton';
 import { getAdminReports, banReportedUser, deleteReport } from '../services/api';
@@ -82,6 +83,20 @@ const AdminReportListScreen = ({ navigation }) => {
     loadReports(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter, sortOrder]);
+
+  // Refetch trang hiện tại khi quay lại từ AdminReportDetailScreen (sau khi đổi
+  // status) — bỏ qua lần focus đầu tiên vì useEffect ở trên đã tự load rồi.
+  const isFirstFocus = useRef(true);
+  useFocusEffect(
+    useCallback(() => {
+      if (isFirstFocus.current) {
+        isFirstFocus.current = false;
+        return;
+      }
+      loadReports(currentPage);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentPage])
+  );
 
   const handleApplyFilter = (next) => {
     if (next.status !== undefined) setStatusFilter(next.status);
@@ -188,6 +203,13 @@ const AdminReportListScreen = ({ navigation }) => {
                   </Text>
                 </View>
                 <Text style={styles.dateText}>{formatDate(item.createdAt)}</Text>
+
+                <Pressable
+                  style={styles.viewDetailButton}
+                  onPress={() => navigation.navigate('AdminReportDetail', { report: item })}
+                >
+                  <Text style={styles.viewDetailText}>View / Update Status ›</Text>
+                </Pressable>
 
                 <View style={styles.actionRow}>
                   <Pressable
@@ -417,7 +439,9 @@ const styles = StyleSheet.create({
   messageText: { fontSize: 13, color: COLORS.textPrimary, lineHeight: 19, marginBottom: 10 },
   metaRow: { marginBottom: 4 },
   metaText: { fontSize: 11, color: COLORS.textMuted, fontFamily: fonts.medium, fontWeight: '600' },
-  dateText: { fontSize: 11, color: COLORS.textMuted, marginBottom: 12 },
+  dateText: { fontSize: 11, color: COLORS.textMuted, marginBottom: 8 },
+  viewDetailButton: { marginBottom: 10 },
+  viewDetailText: { fontSize: 12, fontFamily: fonts.bold, fontWeight: '700', color: COLORS.primary },
   actionRow: { flexDirection: 'row', gap: 8 },
   actionButton: { flex: 1, borderWidth: 2, borderColor: COLORS.border, borderRadius: 10, paddingVertical: 9, alignItems: 'center' },
   banButton: { backgroundColor: '#ED2553' },

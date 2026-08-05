@@ -18,9 +18,10 @@ import { cartoonShadow, colors, fonts } from '../constants/theme';
 import { createChatConnection } from '../services/chatService';
 import { clearSession, getSession } from '../services/storage';
 import { requestReveal, getRevealedIdentity, getRevealStatus } from '../services/revealApi';
+import { getMessages } from '../services/api';
 
-function formatTime() {
-  return new Date().toLocaleTimeString('vi-VN', {
+function formatTime(date = new Date()) {
+  return date.toLocaleTimeString('vi-VN', {
     hour: '2-digit',
     minute: '2-digit',
   });
@@ -63,6 +64,26 @@ export default function ChatRoomScreen({ navigation, route }) {
       }
 
       if (mounted) setUserId(finalUserId);
+
+      // Nạp lại lịch sử tin nhắn từ DB trước — trước đây messages chỉ tồn tại
+      // qua sự kiện SignalR real-time nên thoát app/vào lại phòng là mất trắng
+      // dù dữ liệu vẫn còn trong DB.
+      try {
+        const history = await getMessages(roomId);
+        if (mounted && Array.isArray(history)) {
+          setMessages(
+            history.map(m => ({
+              id: `h-${m.messId}`,
+              text: m.content,
+              isOwn: Number(m.senderId) === Number(finalUserId),
+              timestamp: formatTime(new Date(m.createdAt)),
+            }))
+          );
+        }
+      } catch (error) {
+        // Không chặn luồng chat live nếu load lịch sử lỗi — chỉ log để debug.
+        console.log('[MOBILE][ChatRoom] load history error:', error);
+      }
 
       const connection = createChatConnection(finalUserId);
       connectionRef.current = connection;

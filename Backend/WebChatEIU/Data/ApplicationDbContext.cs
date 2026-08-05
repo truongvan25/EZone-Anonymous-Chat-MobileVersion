@@ -18,6 +18,11 @@ namespace WebChatEIU.Data
         {
             base.OnModelCreating(modelBuilder);
 
+            // Soft delete: mọi query tới Users tự động ẩn tài khoản đã bị xóa
+            // (login, GetMe, check email trùng khi register, admin GetUser, ...)
+            // mà không cần sửa filter thủ công ở từng controller.
+            modelBuilder.Entity<Users>().HasQueryFilter(u => !u.IsDeleted);
+
             modelBuilder.Entity<ChatRooms>()
                 .HasOne(c => c.User1) 
                 .WithMany()

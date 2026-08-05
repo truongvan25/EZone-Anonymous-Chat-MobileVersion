@@ -9,7 +9,7 @@ import { activateAccount } from '../services/api';
 
 export default function ActivateAccountScreen({ navigation, route }) {
   const [email, setEmail] = useState(route.params?.email || '');
-  const [code, setCode] = useState(route.params?.demoCode || '');
+  const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleActivate = async () => {
@@ -37,7 +37,7 @@ export default function ActivateAccountScreen({ navigation, route }) {
 
       <InfoCard>
         <TextInputField label="EIU Email" value={email} onChangeText={setEmail} placeholder="example@eiu.edu.vn" keyboardType="email-address" />
-        <TextInputField label="Activation Code" value={code} onChangeText={setCode} placeholder="6-digit code" keyboardType="number-pad" />
+        <TextInputField label="Activation Code" value={code} onChangeText={setCode} placeholder="6-digit code" keyboardType="numeric" />
         <CartoonButton title="ACTIVATE ACCOUNT" onPress={handleActivate} loading={loading} />
       </InfoCard>
 

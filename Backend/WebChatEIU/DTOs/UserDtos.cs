@@ -32,4 +32,10 @@
         public string? SocialLink { get; set; }
         public IFormFile? AvatarFile { get; set; }
     }
+
+    // Xóa tài khoản — bắt nhập lại mật khẩu để xác nhận
+    public class DeleteAccountDto
+    {
+        public string Password { get; set; }
+    }
 }
