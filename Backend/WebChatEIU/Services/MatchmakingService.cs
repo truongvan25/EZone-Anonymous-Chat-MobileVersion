@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using WebChatEIU.Data;
 using WebChatEIU.Models;
 
@@ -46,13 +46,13 @@ namespace WebChatEIU.Services
         }
 
 
-        public string? FindMatch(string connectionId)
+        public (string? partnerConnectionId, int roomId) FindMatch(string connectionId)
         {
             RemoveFromWaitingQueue(connectionId);
 
             if (!connectionUsers.ContainsKey(connectionId))
             {
-                return null;
+                return (null, 0);
             }
 
             int currentUserId = connectionUsers[connectionId];
@@ -98,15 +98,19 @@ namespace WebChatEIU.Services
                 context.ChatRooms.Add(room);
                 context.SaveChanges();
 
-                connectionRooms[connectionId] = room.RoomId;
-                connectionRooms[waitingUser] = room.RoomId;
+                // Do NOT register connectionRooms here — these connections belong
+                // to the WaitingScreen and will disconnect when the user navigates
+                // to ChatRoomScreen. If we register them, OnDisconnectedAsync will
+                // find the roomId and close the room before the new ChatRoom
+                // connection can call JoinRoom(). Room registration is handled
+                // exclusively by JoinRoom() on the ChatRoomScreen's connection.
 
-                return waitingUser;
+                return (waitingUser, room.RoomId);
             }
 
             waitingUsers.Enqueue(connectionId);
 
-            return null;
+            return (null, 0);
         }
 
         public string? GetPartner(string connectionId)

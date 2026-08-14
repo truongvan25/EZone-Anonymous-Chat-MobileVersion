@@ -89,8 +89,13 @@ export default function ChatRoomScreen({ navigation, route }) {
       connectionRef.current = connection;
 
       connection.on('ReceiveMessage', data => {
+        console.log('[MOBILE][ReceiveMessage] RECEIVED:', JSON.stringify(data));
+
         const senderId = Number(data.senderId ?? data.SenderId);
         const text = data.message ?? data.Message ?? data.content ?? data.Content;
+
+        console.log('[MOBILE][ReceiveMessage] senderId:', senderId);
+        console.log('[MOBILE][ReceiveMessage] text:', text);
 
         setMessages(prev => [
           ...prev,
@@ -147,7 +152,7 @@ export default function ChatRoomScreen({ navigation, route }) {
   const handleChangeText = text => {
     setInputValue(text);
     if (connectionRef.current && connected) {
-      connectionRef.current.invoke('Typing').catch(() => {});
+      connectionRef.current.invoke('Typing').catch(() => { });
     }
   };
 
@@ -193,7 +198,7 @@ export default function ChatRoomScreen({ navigation, route }) {
     try {
       await connectionRef.current?.invoke('LeaveRoom');
       await connectionRef.current?.stop();
-    } catch {}
+    } catch { }
     navigation.replace('Waiting', { userId });
   };
 
