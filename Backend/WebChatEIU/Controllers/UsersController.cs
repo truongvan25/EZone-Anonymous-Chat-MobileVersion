@@ -5,6 +5,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using System.Text.RegularExpressions;
 using WebChatEIU.Data;
 using WebChatEIU.DTOs;
 using WebChatEIU.Models;
@@ -36,9 +37,19 @@ namespace WebChatEIU.Controllers
 
         // ====================== Register/Log in ============================================
 
+        // Khớp đúng ràng buộc email EIU đã khai báo trên entity Users (Models/Users.cs)
+        // — RegisterDto không tự động validate theo entity nên phải check tay ở đây,
+        // nếu không thì email sai định dạng vẫn đăng ký thành công bình thường.
+        private static readonly Regex EiuEmailRegex = new(@"^[a-zA-Z0-9._%+-]+@eiu\.edu\.vn$");
+
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterDto dto)
         {
+            if (string.IsNullOrWhiteSpace(dto.Email) || !EiuEmailRegex.IsMatch(dto.Email))
+            {
+                return BadRequest("Email must be a valid EIU student email (@eiu.edu.vn)");
+            }
+
             // Kiểm tra email này đã tồn tại chưa, nếu đã tồn tại thì báo email đã tồn tại
             var emailExists = await _context.Users.AnyAsync(u => u.Email == dto.Email);
             if (emailExists)

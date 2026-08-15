@@ -89,7 +89,7 @@ namespace WebChatEIU.Hubs
             {
                 string connectionId = Context.ConnectionId;
 
-                string? partnerConnectionId =
+                var (partnerConnectionId, roomId) =
                     _matchmakingService.FindMatch(connectionId);
 
                 if (partnerConnectionId == null)
@@ -97,9 +97,6 @@ namespace WebChatEIU.Hubs
                     await Clients.Caller.SendAsync("WaitingForMatch");
                     return;
                 }
-
-                int roomId =
-                    _matchmakingService.GetRoomIdOrDefault(connectionId);
 
                 if (roomId == 0)
                 {
@@ -145,11 +142,13 @@ namespace WebChatEIU.Hubs
 
         public async Task SendMessage(string message)
         {
+            Console.WriteLine($"[CHAT] SendMessage called: {message}");
+
             if (_moderationService.IsSensitive(message))
             {
-                int ReporterId = _matchmakingService.GetUserId(Context.ConnectionId);
+                int reporterId = _matchmakingService.GetUserId(Context.ConnectionId);
 
-                var user = await _context.Users.FindAsync(ReporterId);
+                var user = await _context.Users.FindAsync(reporterId);
 
                 if (user != null)
                 {
@@ -168,17 +167,21 @@ namespace WebChatEIU.Hubs
 
             int roomId = _matchmakingService.GetRoomIdOrDefault(Context.ConnectionId);
 
+            Console.WriteLine($"[CHAT] ConnectionId: {Context.ConnectionId}");
+            Console.WriteLine($"[CHAT] RoomId: {roomId}");
+
             if (roomId == 0)
             {
+                Console.WriteLine("[CHAT] ERROR: roomId = 0");
                 return;
             }
-            int senderId = _matchmakingService.GetUserId(Context.ConnectionId);
-            await Clients.Group(roomId.ToString()).SendAsync("ReceiveMessage", new { senderId, message });
 
             var room = await _context.ChatRooms.FindAsync(roomId);
 
             if (room == null || room.Status == ChatRooms.RoomStatus.Closed)
             {
+                Console.WriteLine($"[CHAT] ERROR: Room {roomId} is closed/not found");
+
                 await Clients.Caller.SendAsync(
                     "ViolationDetected",
                     "This conversation has ended. You cannot send messages anymore."
@@ -187,7 +190,20 @@ namespace WebChatEIU.Hubs
                 return;
             }
 
+            int senderId = _matchmakingService.GetUserId(Context.ConnectionId);
 
+            Console.WriteLine($"[CHAT] SenderId: {senderId}");
+            Console.WriteLine($"[CHAT] Broadcasting to group: {roomId}");
+
+            // Gửi realtime cho cả 2 người
+            await Clients.Group(roomId.ToString())
+                .SendAsync("ReceiveMessage", new
+                {
+                    senderId,
+                    message
+                });
+
+            // Lưu DB
             Messages newMessage = new Messages
             {
                 RoomId = roomId,
@@ -198,12 +214,10 @@ namespace WebChatEIU.Hubs
             _context.Messages.Add(newMessage);
             await _context.SaveChangesAsync();
 
-            if (room != null)
-            {
-                room.AffinityScore += 1;
+            room.AffinityScore += 1;
+            await _context.SaveChangesAsync();
 
-                await _context.SaveChangesAsync();
-            }
+            Console.WriteLine("[CHAT] Message sent successfully");
         }
 
         public int GetPartnerUserId()
@@ -233,19 +247,42 @@ namespace WebChatEIU.Hubs
         {
             int userId = _matchmakingService.GetUserId(Context.ConnectionId);
 
+            Console.WriteLine(
+                $"[CHAT] JoinRoom: connection={Context.ConnectionId}, userId={userId}, roomId={roomId}"
+            );
+
             var room = await _context.ChatRooms.FindAsync(roomId);
 
-            if (room == null || room.Status == ChatRooms.RoomStatus.Closed)
+            if (room == null)
+            {
+                Console.WriteLine($"[CHAT] JoinRoom FAILED: room {roomId} not found");
                 return;
+            }
+
+            if (room.Status == ChatRooms.RoomStatus.Closed)
+            {
+                Console.WriteLine($"[CHAT] JoinRoom FAILED: room {roomId} closed");
+                return;
+            }
 
             if (room.User1Id != userId && room.User2Id != userId)
+            {
+                Console.WriteLine(
+                    $"[CHAT] JoinRoom FAILED: user {userId} does not belong to room {roomId}"
+                );
                 return;
+            }
 
             _matchmakingService.RegisterRoom(Context.ConnectionId, roomId);
 
-            await Groups.AddToGroupAsync(Context.ConnectionId, roomId.ToString());
+            await Groups.AddToGroupAsync(
+                Context.ConnectionId,
+                roomId.ToString()
+            );
 
-            Console.WriteLine($"User {userId} joined room {roomId}");
+            Console.WriteLine(
+                $"[CHAT] JOIN SUCCESS: user {userId} -> room {roomId}"
+            );
         }
 
 

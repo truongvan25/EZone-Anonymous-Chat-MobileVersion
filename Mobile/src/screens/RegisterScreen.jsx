@@ -7,6 +7,10 @@ import TextInputField from '../components/TextInputField';
 import { colors, fonts } from '../constants/theme';
 import { registerUser } from '../services/api';
 
+// Khớp đúng ràng buộc email EIU bên backend (Models/Users.cs + UsersController.Register)
+// — check trước ở đây để báo lỗi ngay, khỏi mất công round-trip lên server.
+const EIU_EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@eiu\.edu\.vn$/;
+
 export default function RegisterScreen({ navigation }) {
   const [fullname, setFullname] = useState('');
   const [email, setEmail] = useState('');
@@ -17,6 +21,11 @@ export default function RegisterScreen({ navigation }) {
   const handleRegister = async () => {
     if (!fullname || !email || !majorCode || !password) {
       Alert.alert('Missing information', 'Please fill in all fields.');
+      return;
+    }
+
+    if (!EIU_EMAIL_REGEX.test(email.trim())) {
+      Alert.alert('Invalid email', 'Please use a valid EIU student email (example@eiu.edu.vn).');
       return;
     }
 
