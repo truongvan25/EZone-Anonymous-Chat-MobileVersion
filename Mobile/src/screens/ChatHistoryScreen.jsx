@@ -6,16 +6,7 @@ import CartoonButton from '../components/CartoonButton';
 import { colors, fonts, cartoonShadow } from '../constants/theme';
 import { getChatHistory, ROOM_STATUS_LABELS } from '../services/api';
 import { getSession } from '../services/storage';
-
-function formatDate(iso) {
-  return new Date(iso).toLocaleString('en-US', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
+import { formatDateShort as formatDate } from '../utils/dateUtils';
 
 // List screen — dùng lại API GET /ChatRooms/history/{userId} vốn đã có sẵn
 // ở backend nhưng chưa từng được mobile gọi tới.

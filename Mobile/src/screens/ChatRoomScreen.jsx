@@ -19,6 +19,7 @@ import { createChatConnection } from '../services/chatService';
 import { clearSession, getSession } from '../services/storage';
 import { requestReveal, getRevealedIdentity, getRevealStatus } from '../services/revealApi';
 import { getMessages } from '../services/api';
+import { parseUTC } from '../utils/dateUtils';
 
 function formatTime(date = new Date()) {
   return date.toLocaleTimeString('vi-VN', {
@@ -76,7 +77,7 @@ export default function ChatRoomScreen({ navigation, route }) {
               id: `h-${m.messId}`,
               text: m.content,
               isOwn: Number(m.senderId) === Number(finalUserId),
-              timestamp: formatTime(new Date(m.createdAt)),
+              timestamp: formatTime(parseUTC(m.createdAt)),
             }))
           );
         }
