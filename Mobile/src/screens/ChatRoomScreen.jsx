@@ -19,6 +19,7 @@ import { createChatConnection } from '../services/chatService';
 import { clearSession, getSession } from '../services/storage';
 import { requestReveal, getRevealedIdentity, getRevealStatus } from '../services/revealApi';
 import { getMessages } from '../services/api';
+import { parseUTC } from '../utils/dateUtils';
 
 function formatTime(date = new Date()) {
   return date.toLocaleTimeString('vi-VN', {
@@ -76,7 +77,7 @@ export default function ChatRoomScreen({ navigation, route }) {
               id: `h-${m.messId}`,
               text: m.content,
               isOwn: Number(m.senderId) === Number(finalUserId),
-              timestamp: formatTime(new Date(m.createdAt)),
+              timestamp: formatTime(parseUTC(m.createdAt)),
             }))
           );
         }
@@ -89,8 +90,13 @@ export default function ChatRoomScreen({ navigation, route }) {
       connectionRef.current = connection;
 
       connection.on('ReceiveMessage', data => {
+        console.log('[MOBILE][ReceiveMessage] RECEIVED:', JSON.stringify(data));
+
         const senderId = Number(data.senderId ?? data.SenderId);
         const text = data.message ?? data.Message ?? data.content ?? data.Content;
+
+        console.log('[MOBILE][ReceiveMessage] senderId:', senderId);
+        console.log('[MOBILE][ReceiveMessage] text:', text);
 
         setMessages(prev => [
           ...prev,
@@ -147,7 +153,7 @@ export default function ChatRoomScreen({ navigation, route }) {
   const handleChangeText = text => {
     setInputValue(text);
     if (connectionRef.current && connected) {
-      connectionRef.current.invoke('Typing').catch(() => {});
+      connectionRef.current.invoke('Typing').catch(() => { });
     }
   };
 
@@ -193,7 +199,7 @@ export default function ChatRoomScreen({ navigation, route }) {
     try {
       await connectionRef.current?.invoke('LeaveRoom');
       await connectionRef.current?.stop();
-    } catch {}
+    } catch { }
     navigation.replace('Waiting', { userId });
   };
 

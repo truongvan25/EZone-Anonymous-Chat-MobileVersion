@@ -1,4 +1,4 @@
-﻿using Xunit;
+using Xunit;
 using WebChatEIU.Services;
 
 namespace WebChatEIU.Tests.Services

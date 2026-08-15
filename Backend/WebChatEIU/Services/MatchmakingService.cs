@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using WebChatEIU.Data;
 using WebChatEIU.Models;
 

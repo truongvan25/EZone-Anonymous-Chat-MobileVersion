@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Text, TextInput, Pressable, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { Text, TextInput, Pressable, View, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import Screen from '../components/Screen';
 import InfoCard from '../components/InfoCard';
 import CartoonButton from '../components/CartoonButton';
@@ -13,6 +13,7 @@ import { clearSession, getSession } from '../services/storage';
 export default function DeleteAccountScreen({ navigation }) {
   const [password, setPassword] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const runDelete = async () => {
     setDeleting(true);
@@ -60,14 +61,23 @@ export default function DeleteAccountScreen({ navigation }) {
       </InfoCard>
 
       <InfoCard title="Confirm your password" style={styles.card}>
-        <TextInput
-          value={password}
-          onChangeText={setPassword}
-          placeholder="Enter your password"
-          placeholderTextColor="#9CA3AF"
-          secureTextEntry
-          style={styles.input}
-        />
+        <View style={styles.inputRow}>
+          <TextInput
+            value={password}
+            onChangeText={setPassword}
+            placeholder="Enter your password"
+            placeholderTextColor="#9CA3AF"
+            secureTextEntry={!showPassword}
+            style={styles.input}
+          />
+          <Pressable
+            onPress={() => setShowPassword(prev => !prev)}
+            style={styles.eyeButton}
+            hitSlop={8}
+          >
+            <Text style={styles.eyeIcon}>{showPassword ? '🙈' : '👁'}</Text>
+          </Pressable>
+        </View>
       </InfoCard>
 
       <Pressable
@@ -102,16 +112,30 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bold, fontWeight: '700',
     lineHeight: 22,
   },
-  input: {
-    fontSize: 15,
-    color: colors.text,
-    fontFamily: fonts.medium, fontWeight: '600',
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderWidth: 1.5,
     borderColor: colors.border,
     borderRadius: 8,
+    backgroundColor: '#F9FAFB',
+  },
+  input: {
+    flex: 1,
+    fontSize: 15,
+    color: colors.text,
+    fontFamily: fonts.medium, fontWeight: '600',
     paddingHorizontal: 12,
     paddingVertical: 10,
-    backgroundColor: '#F9FAFB',
+  },
+  eyeButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  eyeIcon: {
+    fontSize: 18,
   },
   deleteButton: {
     ...cartoonShadow,

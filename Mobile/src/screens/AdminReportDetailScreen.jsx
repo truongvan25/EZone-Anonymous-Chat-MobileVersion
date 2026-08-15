@@ -5,18 +5,10 @@ import InfoCard from '../components/InfoCard';
 import CartoonButton from '../components/CartoonButton';
 import { colors, fonts, cartoonShadow } from '../constants/theme';
 import { updateReportStatus, banReportedUser } from '../services/api';
+import { formatDateShort as formatDate } from '../utils/dateUtils';
 
 const STATUS_OPTIONS = ['Pending', 'Resolved'];
 
-function formatDate(iso) {
-  return new Date(iso).toLocaleString('en-US', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
 
 // Update item screen — dùng API PUT /ChatReports/{id} mới thêm để admin đổi
 // trạng thái xử lý report mà không cần ban user luôn.

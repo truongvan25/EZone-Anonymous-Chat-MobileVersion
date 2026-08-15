@@ -34,8 +34,10 @@ export default function LoginScreen({ navigation }) {
   return (
     <Screen>
       <View style={styles.center}>
-        <Text style={styles.title}>LOGIN</Text>
-        <Text style={styles.subtitle}>Step into the Zone.</Text>
+        <View style={styles.head}>
+          <Text style={styles.title}>LOGIN</Text>
+          <Text style={styles.subtitle}>Step into the Zone.</Text>
+        </View>
 
         <InfoCard style={styles.card}>
           <TextInputField
@@ -77,6 +79,9 @@ const styles = StyleSheet.create({
   center: {
     flex: 1,
     justifyContent: 'center',
+  },
+  head: {
+    alignItems: 'center',
   },
   title: {
     fontSize: 38,

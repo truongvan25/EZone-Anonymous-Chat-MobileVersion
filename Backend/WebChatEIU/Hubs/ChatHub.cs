@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.SignalR;
 using WebChatEIU.Data;
 using WebChatEIU.Models;
 using WebChatEIU.Services;

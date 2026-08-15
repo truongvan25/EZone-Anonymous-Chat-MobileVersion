@@ -5,17 +5,7 @@ import InfoCard from '../components/InfoCard';
 import CartoonButton from '../components/CartoonButton';
 import { colors, fonts } from '../constants/theme';
 import { getChatRoomDetail, ROOM_STATUS_LABELS } from '../services/api';
-
-function formatDate(iso) {
-  if (!iso) return 'N/A';
-  return new Date(iso).toLocaleString('en-US', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
+import { formatDateShort as formatDate } from '../utils/dateUtils';
 
 // Detail screen — dùng lại API GET /ChatRooms/{roomId} vốn đã có sẵn ở backend
 // nhưng chưa từng được mobile gọi tới.

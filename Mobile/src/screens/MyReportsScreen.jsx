@@ -5,16 +5,7 @@ import Screen from '../components/Screen';
 import CartoonButton from '../components/CartoonButton';
 import { colors, fonts, cartoonShadow } from '../constants/theme';
 import { getMyReports } from '../services/api';
-
-function formatDate(iso) {
-  return new Date(iso).toLocaleString('en-US', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
+import { formatDate } from '../utils/dateUtils';
 
 // List screen — dùng lại API GET /ChatReports/my vốn đã có sẵn ở backend
 // (Authorize) nhưng chưa từng được mobile gọi tới. Khác AdminReportListScreen:
@@ -22,6 +13,7 @@ function formatDate(iso) {
 export default function MyReportsScreen({ navigation }) {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
+
 
   useFocusEffect(
     useCallback(() => {

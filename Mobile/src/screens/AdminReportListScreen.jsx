@@ -14,6 +14,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { fonts } from '../constants/theme';
 import CartoonButton from '../components/CartoonButton';
 import { getAdminReports, banReportedUser, deleteReport } from '../services/api';
+import { formatDateShort as formatDate } from '../utils/dateUtils';
 
 const COLORS = {
   border: '#111111',
@@ -138,14 +139,6 @@ const AdminReportListScreen = ({ navigation }) => {
     }
   };
 
-  const formatDate = (iso) =>
-    new Date(iso).toLocaleString('en-US', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
 
   return (
     <SafeAreaView style={styles.safeArea}>
