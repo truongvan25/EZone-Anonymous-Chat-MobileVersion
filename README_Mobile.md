@@ -1,3 +1,8 @@
+adb push "C:\đường\dẫn\anh.jpg" /sdcard/Pictures/
+
+adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Pictures/anh.jpg
+
+
 # EZone Mobile — Tài liệu kỹ thuật (as-built)
 
 > File này trước đây là bản **kế hoạch triển khai** (task list trước khi code).

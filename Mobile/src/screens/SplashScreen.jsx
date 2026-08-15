@@ -7,6 +7,7 @@ export default function SplashScreen({ navigation }) {
   useEffect(() => {
     const checkLogin = async () => {
       try {
+        await new Promise(resolve => setTimeout(resolve, 5000));
         const valid = await hasValidSession();
 
         if (valid) {

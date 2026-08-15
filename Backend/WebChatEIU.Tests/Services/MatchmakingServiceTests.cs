@@ -17,12 +17,13 @@ namespace WebChatEIU.Tests.Services
 
             // Act
 
-            var result =
+            var (partnerConnectionId, roomId) =
                 service.FindMatch("conn1");
 
             // Assert
 
-            Assert.Null(result);
+            Assert.Null(partnerConnectionId);
+            Assert.Equal(0, roomId);
         }
 
         

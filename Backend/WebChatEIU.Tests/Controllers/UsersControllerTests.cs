@@ -107,6 +107,27 @@ namespace WebChatEIU.Tests.Controllers
             Assert.Null(activationCodeProp);
         }
 
+        [Theory]
+        [InlineData("notaneiuemail@gmail.com")]
+        [InlineData("missing-at-sign.eiu.edu.vn")]
+        [InlineData("")]
+        public async Task Register_WithInvalidEmailFormat_ReturnsBadRequest(string invalidEmail)
+        {
+            var context = CreateContext();
+            var controller = CreateController(context);
+
+            var result = await controller.Register(new RegisterDto
+            {
+                Fullname = "New User",
+                Email = invalidEmail,
+                Password = "123456",
+                MajorCode = "SE",
+            });
+
+            Assert.IsType<BadRequestObjectResult>(result);
+            Assert.False(await context.Users.AnyAsync(u => u.Email == invalidEmail));
+        }
+
         [Fact]
         public async Task Register_WithExistingEmail_ReturnsBadRequest()
         {
