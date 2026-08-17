@@ -121,18 +121,30 @@ namespace WebChatEIU.Hubs
         {
             int roomId = _matchmakingService.GetRoomIdOrDefault(Context.ConnectionId);
 
-            Console.WriteLine($"Disconnected: {Context.ConnectionId}, roomId = {roomId}");
+            // true nếu disconnect này là do SendMessage() vừa Context.Abort()
+            // sau khi phát hiện vi phạm — đã tự gửi "PartnerBanned" +
+            // "ViolationDetected" ở đó rồi nên KHÔNG lặp lại thông báo ở đây.
+            bool wasBanned = _matchmakingService.ConsumeBanned(Context.ConnectionId);
+
+            Console.WriteLine($"Disconnected: {Context.ConnectionId}, roomId = {roomId}, wasBanned = {wasBanned}");
 
             if (roomId != 0)
             {
-                await Clients.GroupExcept(roomId.ToString(), Context.ConnectionId)
-                    .SendAsync("PartnerDisconnected");
+                if (!wasBanned)
+                {
+                    await Clients.GroupExcept(roomId.ToString(), Context.ConnectionId)
+                        .SendAsync("PartnerDisconnected");
+                }
 
                 // Rớt kết nối (tắt app, mất mạng, logout giữa chừng...) mà chưa
                 // từng bấm LEAVE tường minh -> đóng room luôn, tránh nó bị kẹt
                 // vĩnh viễn ở Active khiến ChatHistoryScreen thiếu sót các cuộc
                 // chat kết thúc "đột ngột" thay vì kết thúc sạch qua LeaveRoom().
-                await CloseRoomAsync(roomId);
+                //
+                // Nếu đóng room do BAN thì giữ lại Messages (không xóa) — Admin
+                // cần xem ngữ cảnh hội thoại quanh câu vi phạm, và nạn nhân
+                // không nên mất trắng lịch sử chat chỉ vì đối phương vi phạm.
+                await CloseRoomAsync(roomId, deleteMessages: !wasBanned);
             }
 
             _matchmakingService.Disconnect(Context.ConnectionId);
@@ -146,9 +158,10 @@ namespace WebChatEIU.Hubs
 
             if (_moderationService.IsSensitive(message))
             {
-                int reporterId = _matchmakingService.GetUserId(Context.ConnectionId);
+                int violatorId = _matchmakingService.GetUserId(Context.ConnectionId);
+                int violationRoomId = _matchmakingService.GetRoomIdOrDefault(Context.ConnectionId);
 
-                var user = await _context.Users.FindAsync(reporterId);
+                var user = await _context.Users.FindAsync(violatorId);
 
                 if (user != null)
                 {
@@ -156,10 +169,47 @@ namespace WebChatEIU.Hubs
                     await _context.SaveChangesAsync();
                 }
 
+                // Đánh dấu trước để OnDisconnectedAsync (sẽ chạy ngay sau
+                // Context.Abort() bên dưới) biết đây là disconnect do ban,
+                // không phải rớt mạng bình thường.
+                _matchmakingService.MarkBanned(Context.ConnectionId);
+
+                // 1) Báo cho chính người vi phạm biết lý do bị khoá tài khoản.
                 await Clients.Caller.SendAsync(
                     "ViolationDetected",
                     "Your account has been locked for posting sensitive content."
                 );
+
+                // 2) Báo cho đối phương biết người đang chat cùng vừa bị ban —
+                // trước khi Context.Abort() cắt kết nối (OnDisconnectedAsync
+                // vẫn sẽ tự đóng room sau đó, nhưng đối phương cần biết LÝ DO
+                // chứ không chỉ đơn thuần "mất kết nối" như PartnerDisconnected).
+                if (violationRoomId != 0)
+                {
+                    await Clients.GroupExcept(violationRoomId.ToString(), Context.ConnectionId)
+                        .SendAsync(
+                            "PartnerBanned",
+                            "Your chat partner has been banned for violating community guidelines."
+                        );
+
+                    // 3) Tạo report tự động để Admin thấy trong Chat Reports —
+                    // Status để "Pending" (không tự Resolved) vì hệ thống lọc từ
+                    // khoá có thể bắt oan (vd "tên"/"name" trước đây), Admin cần
+                    // xem lại và có thể Unban nếu là false positive.
+                    _context.ChatReports.Add(new ChatReports
+                    {
+                        RoomId = violationRoomId,
+                        ReporterId = violatorId,
+                        ReportedUserId = violatorId,
+                        ViolatingMessage = message,
+                        Reason = "Auto-detected sensitive content",
+                        Type = "Auto",
+                        Status = "Pending",
+                        CreatedAt = DateTime.UtcNow,
+                    });
+
+                    await _context.SaveChangesAsync();
+                }
 
                 Context.Abort();
                 return;
@@ -318,7 +368,7 @@ namespace WebChatEIU.Hubs
         // OnDisconnectedAsync() (rớt kết nối/tắt app không bấm LEAVE) — chỉ 1
         // nguồn duy nhất quyết định "đóng room" là gì, tránh lệch logic giữa
         // 2 chỗ như REST endpoint chết đã dọn trước đó.
-        private async Task CloseRoomAsync(int roomId)
+        private async Task CloseRoomAsync(int roomId, bool deleteMessages = true)
         {
             var room = await _context.ChatRooms.FindAsync(roomId);
 
@@ -327,8 +377,11 @@ namespace WebChatEIU.Hubs
                 return;
             }
 
-            var messages = _context.Messages.Where(m => m.RoomId == roomId);
-            _context.Messages.RemoveRange(messages);
+            if (deleteMessages)
+            {
+                var messages = _context.Messages.Where(m => m.RoomId == roomId);
+                _context.Messages.RemoveRange(messages);
+            }
 
             room.Status = ChatRooms.RoomStatus.Closed;
             room.UpdatedAt = DateTime.UtcNow;

@@ -121,6 +121,15 @@ export default function ChatRoomScreen({ navigation, route }) {
         ]);
       });
 
+      // Đối phương vừa bị auto-ban do gửi nội dung vi phạm — khác
+      // PartnerDisconnected (rớt mạng bình thường), ở đây cần nói rõ LÝ DO
+      // để user không hoang mang không biết vì sao cuộc chat đột ngột dừng.
+      connection.on('PartnerBanned', message => {
+        Alert.alert('Partner banned', String(message || 'Your chat partner has been banned for violating community guidelines.'), [
+          { text: 'Find new', onPress: () => navigation.replace('Waiting', { userId: finalUserId }) },
+        ]);
+      });
+
       connection.on('ViolationDetected', async message => {
         Alert.alert('Violation detected', String(message));
         await clearSession();

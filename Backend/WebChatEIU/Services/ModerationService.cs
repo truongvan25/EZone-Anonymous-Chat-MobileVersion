@@ -4,18 +4,22 @@ namespace WebChatEIU.Services
 {
     public class ModerationService
     {
+
         private readonly List<string> _bannedWords = new()
         {
-            "dm",
-            "cc",
+            // Nội dung khiêu dâm / không phù hợp
             "sex",
             "xxx",
             "nude",
-            "sgdd",
-            "sgbb",
+            "porn",
+            "onlyfans",
+            "nsfw",
             "fwb",
-            "name",
-            "tên"
+
+            // Mời chào tài chính / lừa đảo — rủi ro cao với sinh viên
+            "vay tiền",
+            "chuyển khoản",
+            "đa cấp",
         };
 
         private readonly List<Regex> _sensitivePatterns = new()
@@ -24,7 +28,8 @@ namespace WebChatEIU.Services
             new Regex(@"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"), // email
             new Regex(@"(https?:\/\/|www\.)\S+"), // link
             new Regex(@"\b\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}\b"), // date
-            new Regex(@"\b(facebook|fb|instagram|insta|zalo|tiktok|telegram)\b", RegexOptions.IgnoreCase)
+            new Regex(@"\b(facebook|fb|instagram|insta|zalo|tiktok|telegram|snapchat|whatsapp|discord|wechat|viber)\b", RegexOptions.IgnoreCase),
+            new Regex(@"\bdm\b", RegexOptions.IgnoreCase) // chửi thề viết tắt, có ranh giới từ tránh dính "admin"
         };
 
         public bool IsSensitive(string message)

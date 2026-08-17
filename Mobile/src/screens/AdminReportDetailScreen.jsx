@@ -4,7 +4,7 @@ import Screen from '../components/Screen';
 import InfoCard from '../components/InfoCard';
 import CartoonButton from '../components/CartoonButton';
 import { colors, fonts, cartoonShadow } from '../constants/theme';
-import { updateReportStatus, banReportedUser } from '../services/api';
+import { updateReportStatus, banReportedUser, unbanReportedUser } from '../services/api';
 import { formatDateShort as formatDate } from '../utils/dateUtils';
 
 const STATUS_OPTIONS = ['Pending', 'Resolved'];
@@ -17,6 +17,7 @@ export default function AdminReportDetailScreen({ route, navigation }) {
   const [status, setStatus] = useState(report?.status || 'Pending');
   const [saving, setSaving] = useState(false);
   const [banning, setBanning] = useState(false);
+  const isReportedUserBanned = !!report?.isReportedUserBanned;
 
   if (!report) {
     return (
@@ -54,9 +55,26 @@ export default function AdminReportDetailScreen({ route, navigation }) {
     }
   };
 
+  const handleUnban = async () => {
+    setBanning(true);
+    try {
+      await unbanReportedUser(report.reportId);
+      navigation.goBack();
+    } catch (error) {
+      Alert.alert('Unban failed', error.message || 'Please try again.');
+    } finally {
+      setBanning(false);
+    }
+  };
+
   return (
     <Screen>
-      <Text style={styles.title}>Report #{report.reportId}</Text>
+      <View style={styles.titleRow}>
+        <Text style={styles.title}>Report #{report.reportId}</Text>
+        <View style={[styles.typeBadge, report.type === 'Auto' ? styles.typeAuto : styles.typeUser]}>
+          <Text style={styles.typeBadgeText}>{report.type === 'Auto' ? 'AUTO' : 'USER'}</Text>
+        </View>
+      </View>
       <Text style={styles.subtitle}>Room #{report.roomId}</Text>
 
       <InfoCard title="Reporter → Reported" style={styles.card}>
@@ -98,9 +116,15 @@ export default function AdminReportDetailScreen({ route, navigation }) {
         {saving ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.saveText}>Save Status</Text>}
       </Pressable>
 
-      <Pressable style={[styles.actionButton, styles.banButton]} onPress={handleBan} disabled={banning}>
-        {banning ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.banText}>Ban Reported User</Text>}
-      </Pressable>
+      {isReportedUserBanned ? (
+        <Pressable style={[styles.actionButton, styles.unbanButton]} onPress={handleUnban} disabled={banning}>
+          {banning ? <ActivityIndicator color={colors.text} /> : <Text style={styles.unbanText}>Unban Reported User</Text>}
+        </Pressable>
+      ) : (
+        <Pressable style={[styles.actionButton, styles.banButton]} onPress={handleBan} disabled={banning}>
+          {banning ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.banText}>Ban Reported User</Text>}
+        </Pressable>
+      )}
 
       <CartoonButton title="BACK" variant="secondary" onPress={() => navigation.goBack()} style={styles.backButton} />
     </Screen>
@@ -110,12 +134,21 @@ export default function AdminReportDetailScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   errorText: { color: colors.muted, fontFamily: fonts.medium, fontWeight: '600' },
-  title: {
+  titleRow: {
     marginTop: 40,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  title: {
     color: colors.primary,
     fontSize: 26,
     fontFamily: fonts.black, fontWeight: '900',
   },
+  typeBadge: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999, borderWidth: 1.5, borderColor: colors.border },
+  typeAuto: { backgroundColor: '#E0E7FF' },
+  typeUser: { backgroundColor: '#F3F4F6' },
+  typeBadgeText: { fontSize: 10, fontFamily: fonts.bold, fontWeight: '800', color: colors.text },
   subtitle: {
     color: colors.muted,
     fontFamily: fonts.medium, fontWeight: '600',
@@ -152,6 +185,8 @@ const styles = StyleSheet.create({
   saveText: { color: '#FFFFFF', fontFamily: fonts.black, fontWeight: '900', fontSize: 14 },
   banButton: { backgroundColor: colors.danger },
   banText: { color: '#FFFFFF', fontFamily: fonts.black, fontWeight: '900', fontSize: 14 },
+  unbanButton: { backgroundColor: '#FFFFFF' },
+  unbanText: { color: colors.text, fontFamily: fonts.black, fontWeight: '900', fontSize: 14 },
   disabled: { opacity: 0.5 },
   backButton: { marginTop: 4 },
 });

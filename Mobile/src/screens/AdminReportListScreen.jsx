@@ -13,7 +13,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { fonts } from '../constants/theme';
 import CartoonButton from '../components/CartoonButton';
-import { getAdminReports, banReportedUser, deleteReport } from '../services/api';
+import { getAdminReports, banReportedUser, unbanReportedUser, deleteReport, markReportsSeen } from '../services/api';
 import { formatDateShort as formatDate } from '../utils/dateUtils';
 
 const COLORS = {
@@ -34,6 +34,12 @@ const STATUS_OPTIONS = [
   { value: 'Resolved', label: 'Resolved' },
 ];
 
+const TYPE_OPTIONS = [
+  { value: '', label: 'All Types' },
+  { value: 'User', label: 'User-reported' },
+  { value: 'Auto', label: 'Auto-detected' },
+];
+
 const SORT_ORDER_OPTIONS = [
   { value: 'desc', label: 'Descending' },
   { value: 'asc', label: 'Ascending' },
@@ -46,6 +52,7 @@ const AdminReportListScreen = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(false);
 
   const [statusFilter, setStatusFilter] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
   const [sortOrder, setSortOrder] = useState('desc');
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -55,6 +62,7 @@ const AdminReportListScreen = ({ navigation }) => {
   const [showFilterSheet, setShowFilterSheet] = useState(false);
 
   const [banTarget, setBanTarget] = useState(null);
+  const [unbanTarget, setUnbanTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [processing, setProcessing] = useState(false);
 
@@ -66,6 +74,7 @@ const AdminReportListScreen = ({ navigation }) => {
         page,
         pageSize: PAGE_SIZE,
         status: statusFilter,
+        type: typeFilter,
         sortOrder,
       });
 
@@ -83,7 +92,13 @@ const AdminReportListScreen = ({ navigation }) => {
   useEffect(() => {
     loadReports(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter, sortOrder]);
+  }, [statusFilter, typeFilter, sortOrder]);
+
+  // Admin vừa mở màn này -> đánh dấu toàn bộ report hiện có là đã xem, để
+  // badge kiểu Zalo trên nút "ADMIN REPORTS" ở HomeScreen biến mất.
+  useEffect(() => {
+    markReportsSeen().catch(error => console.log('Mark reports seen error:', error));
+  }, []);
 
   // Refetch trang hiện tại khi quay lại từ AdminReportDetailScreen (sau khi đổi
   // status) — bỏ qua lần focus đầu tiên vì useEffect ở trên đã tự load rồi.
@@ -101,6 +116,7 @@ const AdminReportListScreen = ({ navigation }) => {
 
   const handleApplyFilter = (next) => {
     if (next.status !== undefined) setStatusFilter(next.status);
+    if (next.type !== undefined) setTypeFilter(next.type);
     if (next.sortOrder !== undefined) setSortOrder(next.sortOrder);
     setShowFilterSheet(false);
   };
@@ -121,6 +137,19 @@ const AdminReportListScreen = ({ navigation }) => {
       await loadReports(currentPage);
     } catch (error) {
       Alert.alert('Ban failed', error.message || 'Please try again.');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleConfirmUnban = async () => {
+    setProcessing(true);
+    try {
+      await unbanReportedUser(unbanTarget.reportId);
+      setUnbanTarget(null);
+      await loadReports(currentPage);
+    } catch (error) {
+      Alert.alert('Unban failed', error.message || 'Please try again.');
     } finally {
       setProcessing(false);
     }
@@ -154,6 +183,7 @@ const AdminReportListScreen = ({ navigation }) => {
       <View style={styles.filterSummaryRow}>
         <Text style={styles.filterSummaryText}>
           {STATUS_OPTIONS.find((s) => s.value === statusFilter)?.label} ·{' '}
+          {TYPE_OPTIONS.find((t) => t.value === typeFilter)?.label} ·{' '}
           {SORT_ORDER_OPTIONS.find((s) => s.value === sortOrder)?.label}
         </Text>
       </View>
@@ -173,7 +203,17 @@ const AdminReportListScreen = ({ navigation }) => {
               <View style={styles.shadowLayer} />
               <View style={styles.card}>
                 <View style={styles.cardTopRow}>
-                  <Text style={styles.reportCode}>#{item.reportId}</Text>
+                  <View style={styles.cardTopLeft}>
+                    <Text style={styles.reportCode}>#{item.reportId}</Text>
+                    <View
+                      style={[
+                        styles.typeBadge,
+                        item.type === 'Auto' ? styles.typeAuto : styles.typeUser,
+                      ]}
+                    >
+                      <Text style={styles.typeBadgeText}>{item.type === 'Auto' ? 'AUTO' : 'USER'}</Text>
+                    </View>
+                  </View>
                   <View
                     style={[
                       styles.statusBadge,
@@ -205,12 +245,21 @@ const AdminReportListScreen = ({ navigation }) => {
                 </Pressable>
 
                 <View style={styles.actionRow}>
-                  <Pressable
-                    style={[styles.actionButton, styles.banButton]}
-                    onPress={() => setBanTarget(item)}
-                  >
-                    <Text style={styles.banButtonText}>Ban User</Text>
-                  </Pressable>
+                  {item.isReportedUserBanned ? (
+                    <Pressable
+                      style={[styles.actionButton, styles.unbanButton]}
+                      onPress={() => setUnbanTarget(item)}
+                    >
+                      <Text style={styles.unbanButtonText}>Unban User</Text>
+                    </Pressable>
+                  ) : (
+                    <Pressable
+                      style={[styles.actionButton, styles.banButton]}
+                      onPress={() => setBanTarget(item)}
+                    >
+                      <Text style={styles.banButtonText}>Ban User</Text>
+                    </Pressable>
+                  )}
                   <Pressable
                     style={[styles.actionButton, styles.deleteButton]}
                     onPress={() => setDeleteTarget(item)}
@@ -280,6 +329,27 @@ const AdminReportListScreen = ({ navigation }) => {
                     style={[
                       styles.chipText,
                       statusFilter === opt.value && styles.chipTextActive,
+                    ]}
+                  >
+                    {opt.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            {/* Mục Type */}
+            <Text style={styles.sheetGroupLabel}>Type</Text>
+            <View style={styles.chipRow}>
+              {TYPE_OPTIONS.map((opt) => (
+                <Pressable
+                  key={opt.value}
+                  style={[styles.chip, typeFilter === opt.value && styles.chipActive]}
+                  onPress={() => handleApplyFilter({ type: opt.value })}
+                >
+                  <Text
+                    style={[
+                      styles.chipText,
+                      typeFilter === opt.value && styles.chipTextActive,
                     ]}
                   >
                     {opt.label}
@@ -359,6 +429,53 @@ const AdminReportListScreen = ({ navigation }) => {
         </View>
       </Modal>
 
+      {/* ================= Unban User Confirm Dialog ================= */}
+      <Modal
+        visible={!!unbanTarget}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setUnbanTarget(null)}
+        statusBarTranslucent
+      >
+        <View style={styles.dialogOverlay}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={processing ? undefined : () => setUnbanTarget(null)}
+          />
+          <View style={styles.dialogCardWrapper}>
+            <View style={styles.shadowLayer} />
+            <View style={styles.dialogCard}>
+              <Text style={styles.dialogTitle}>Unban this user?</Text>
+              <Text style={styles.dialogDescription}>
+                User #{unbanTarget?.reportedUserId} will be allowed to use EZone again
+                based on report #{unbanTarget?.reportId}.
+              </Text>
+
+              <View style={styles.dialogButtonRow}>
+                <Pressable
+                  onPress={() => setUnbanTarget(null)}
+                  disabled={processing}
+                  style={[styles.dialogButton, styles.dialogNeutralButton]}
+                >
+                  <Text style={styles.dialogNeutralText}>Cancel</Text>
+                </Pressable>
+                <Pressable
+                  onPress={handleConfirmUnban}
+                  disabled={processing}
+                  style={[styles.dialogButton, styles.dialogDangerButton]}
+                >
+                  {processing ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.dialogDangerText}>Unban User</Text>
+                  )}
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* ================= Delete Report Confirm Dialog ================= */}
       <Modal
         visible={!!deleteTarget}
@@ -423,7 +540,12 @@ const styles = StyleSheet.create({
   shadowLayer: { position: 'absolute', top: 5, left: 5, right: -5, bottom: -5, backgroundColor: COLORS.shadow, borderRadius: 16 },
   card: { backgroundColor: COLORS.cardBg, borderRadius: 16, borderWidth: 2.5, borderColor: COLORS.border, padding: 16 },
   cardTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  cardTopLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   reportCode: { fontSize: 13, fontFamily: fonts.bold, fontWeight: '800', color: COLORS.textPrimary },
+  typeBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, borderWidth: 1.5, borderColor: COLORS.border },
+  typeAuto: { backgroundColor: '#E0E7FF' },
+  typeUser: { backgroundColor: '#F3F4F6' },
+  typeBadgeText: { fontSize: 9, fontFamily: fonts.bold, fontWeight: '800', color: COLORS.textPrimary },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, borderWidth: 1.5, borderColor: COLORS.border },
   statusPending: { backgroundColor: '#FEF3C7' },
   statusResolved: { backgroundColor: '#DCFCE7' },
@@ -439,6 +561,8 @@ const styles = StyleSheet.create({
   actionButton: { flex: 1, borderWidth: 2, borderColor: COLORS.border, borderRadius: 10, paddingVertical: 9, alignItems: 'center' },
   banButton: { backgroundColor: '#ED2553' },
   banButtonText: { color: '#FFFFFF', fontFamily: fonts.bold, fontWeight: '700', fontSize: 12 },
+  unbanButton: { backgroundColor: '#FFFFFF', borderColor: COLORS.textMuted },
+  unbanButtonText: { color: COLORS.textPrimary, fontFamily: fonts.bold, fontWeight: '700', fontSize: 12 },
   deleteButton: { backgroundColor: '#FFFFFF' },
   deleteButtonText: { color: COLORS.danger, fontFamily: fonts.bold, fontWeight: '700', fontSize: 12 },
   paginationRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, marginBottom: 16 },

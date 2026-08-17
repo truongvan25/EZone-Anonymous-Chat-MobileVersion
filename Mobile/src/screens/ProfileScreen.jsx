@@ -138,7 +138,7 @@ const ProfileScreen = ({ navigation }) => {
             <ProfileField label="Full Name" value={profile.fullname} />
             <ProfileField label="Major" value={profile.majorCode} />
             <ProfileField label="Gender" value={profile.gender} />
-            <ProfileField label="Email" value={profile.email} helperText="Email không thể thay đổi" />
+            <ProfileField label="Email" value={profile.email} helperText="You can not update email." />
             <ProfileField label="Social Link" value={profile.socialLink} isLast />
           </View>
         </View>

@@ -77,7 +77,7 @@ export default function EditProfileScreen({ navigation, route }) {
               label="Email"
               value={profile.email}
               editable={false}
-              helperText="Email không thể thay đổi"
+              helperText="You can not update email."
             />
             <Field
               label="Social Link"
