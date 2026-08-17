@@ -16,6 +16,12 @@ namespace WebChatEIU.Services
 
         private static Dictionary<string, int> connectionUsers = new();
 
+        // Đánh dấu connection vừa bị Context.Abort() do vi phạm (ban) — dùng
+        // để OnDisconnectedAsync biết mà (1) không gửi "PartnerDisconnected"
+        // đè lên "PartnerBanned" đã gửi trước đó, và (2) không xóa Messages
+        // của room khi đóng, để Admin/nạn nhân vẫn xem lại được hội thoại.
+        private static readonly ConcurrentDictionary<string, bool> bannedConnections = new();
+
         public MatchmakingService(IServiceScopeFactory scopeFactory)
         {
             _scopeFactory = scopeFactory;
@@ -169,6 +175,18 @@ namespace WebChatEIU.Services
         public void RegisterRoom(string connectionId, int roomId)
         {
             connectionRooms[connectionId] = roomId;
+        }
+
+        public void MarkBanned(string connectionId)
+        {
+            bannedConnections[connectionId] = true;
+        }
+
+        // Kiểm tra + xóa cờ trong 1 bước, tránh rò rỉ entry nếu OnDisconnectedAsync
+        // không chạy tới (không nên xảy ra, nhưng an toàn hơn là để leak).
+        public bool ConsumeBanned(string connectionId)
+        {
+            return bannedConnections.TryRemove(connectionId, out _);
         }
 
         public void RemoveFromWaitingQueue(string connectionId)

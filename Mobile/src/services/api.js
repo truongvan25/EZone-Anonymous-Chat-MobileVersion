@@ -79,7 +79,7 @@ export function getMyReports() {
   return apiRequest('/ChatReports/my');
 }
 
-export function getAdminReports({ page = 1, pageSize = 10, status = '', sortOrder = 'desc' } = {}) {
+export function getAdminReports({ page = 1, pageSize = 10, status = '', type = '', sortOrder = 'desc' } = {}) {
   const params = new URLSearchParams({
     page: String(page),
     pageSize: String(pageSize),
@@ -88,12 +88,27 @@ export function getAdminReports({ page = 1, pageSize = 10, status = '', sortOrde
   });
 
   if (status) params.set('status', status);
+  if (type) params.set('type', type);
 
   return apiRequest(`/ChatReports?${params.toString()}`);
 }
 
 export function banReportedUser(reportId) {
   return apiRequest(`/ChatReports/${reportId}/ban`, { method: 'POST' });
+}
+
+export function unbanReportedUser(reportId) {
+  return apiRequest(`/ChatReports/${reportId}/unban`, { method: 'POST' });
+}
+
+// Badge kiểu Zalo trên nút "ADMIN REPORTS" ở HomeScreen.
+export function getUnreadReportCount() {
+  return apiRequest('/ChatReports/unread-count');
+}
+
+// Gọi khi Admin mở AdminReportListScreen -> badge biến mất.
+export function markReportsSeen() {
+  return apiRequest('/ChatReports/mark-seen', { method: 'POST' });
 }
 
 export function updateReportStatus(reportId, status) {
