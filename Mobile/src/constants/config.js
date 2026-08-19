@@ -3,6 +3,6 @@
 // được — dùng chung 1 giá trị BASE_URL, khỏi phải sửa riêng từng máy.
 // IP này đổi mỗi khi Laptop A reconnect Wi-Fi — kiểm tra lại bằng `ipconfig`
 // (dòng IPv4 Address của adapter Wi-Fi) nếu app không gọi được API nữa.
-export const BASE_URL = 'http://172.16.10.132:5044';
+export const BASE_URL = 'http://10.30.221.111:5044';
 export const API_BASE_URL = `${BASE_URL}/api`;
 export const HUB_URL = `${BASE_URL}/chatHub`;
